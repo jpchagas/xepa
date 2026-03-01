@@ -1,19 +1,51 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// App.jsx
+import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from './firebase'
+
+import SplashScreen from './SplashScreen.jsx'
+import Login from './Login.jsx'
+import MainScreen from './MainScreen.jsx'
+import Register from './Register'
+import ForgotPassword from './ForgotPassword'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser)
+      setLoading(false)
+    })
+
+    return unsubscribe
+  }, [])
+
+  if (loading) {
+    return <SplashScreen />
+  }
 
   return (
-    <>
-    <div style={{ textAlign: 'center', marginTop: 40 }}>
-      <img src="/xepa_logo.png" alt="Xepa logo" width={200} />
-      <h1>Xepa</h1>
-      <p>Sua lista de compras inteligente</p>
-    </div>
-    </>
+    <Routes>
+      <Route
+        path="/"
+        element={<Navigate to={user ? '/main' : '/login'} />}
+      />
+
+      <Route
+        path="/login"
+        element={!user ? <Login /> : <Navigate to="/main" />}
+      />
+
+      <Route
+        path="/main"
+        element={user ? <MainScreen /> : <Navigate to="/login" />}
+      />
+      <Route path="/register" element={!user ? <Register /> : <Navigate to="/main" />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+    </Routes>
   )
 }
 
