@@ -17,55 +17,234 @@ import {
   BottomNavigationAction,
   Modal,
   Alert,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from '@mui/material'
+
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import ListIcon from '@mui/icons-material/List'
 import SettingsIcon from '@mui/icons-material/Settings'
+
 import { CSSTransition, TransitionGroup } from 'react-transition-group'
-import { auth } from './firebase'
+
+import { auth, db } from './firebase'
 import { updatePassword, signOut } from 'firebase/auth'
+
+import {
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  onSnapshot,
+  serverTimestamp,
+  getDoc,
+  setDoc,
+  writeBatch
+} from 'firebase/firestore'
+
+import * as XLSX from 'xlsx'
+
 import './MainScreen.css'
 
 function MainScreen() {
-  const [items, setItems] = useState(() => {
-    const saved = localStorage.getItem('xepaItems')
-    return saved ? JSON.parse(saved) : []
-  })
-
+  const [items, setItems] = useState([])
+  const [products, setProducts] = useState([])
   const [newItem, setNewItem] = useState('')
   const [open, setOpen] = useState(false)
   const [navValue, setNavValue] = useState(0)
 
-  // Change password states
   const [newPassword, setNewPassword] = useState('')
   const [passwordMessage, setPasswordMessage] = useState('')
   const [passwordError, setPasswordError] = useState('')
 
-  useEffect(() => {
-    localStorage.setItem('xepaItems', JSON.stringify(items))
-  }, [items])
+  const isAdmin = auth.currentUser?.email === 'jpchagas@gmail.com'
 
-  const addItem = () => {
-    if (newItem.trim() === '') return
-    setItems([...items, newItem.trim()])
+  useEffect(() => {
+    const user = auth.currentUser
+    if (!user) return
+
+    const userDocRef = doc(db, 'users', user.uid)
+
+    const loadUserProfile = async () => {
+      const snap = await getDoc(userDocRef)
+      if (!snap.exists()) {
+        await setDoc(userDocRef, {
+          email: user.email,
+          createdAt: serverTimestamp()
+        })
+      }
+    }
+
+    loadUserProfile()
+
+    const unsubscribeItems = onSnapshot(
+      collection(db, 'users', user.uid, 'shoppingList'),
+      (snapshot) => {
+        const list = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setItems(list)
+      }
+    )
+
+    const unsubscribeProducts = onSnapshot(
+      collection(db, 'products'),
+      (snapshot) => {
+        const list = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setProducts(list)
+      }
+    )
+
+    return () => {
+      unsubscribeItems()
+      unsubscribeProducts()
+    }
+  }, [])
+
+  const addItem = async () => {
+    if (!newItem) return
+    const user = auth.currentUser
+    if (!user) return
+
+    const priceRef = doc(db, 'prices', newItem)
+    const priceSnap = await getDoc(priceRef)
+
+    let priceData = null
+    if (priceSnap.exists()) {
+      priceData = priceSnap.data()
+    }
+
+    await addDoc(collection(db, 'users', user.uid, 'shoppingList'), {
+      productId: newItem,
+      price: priceData?.average || null,
+      previousPrice: priceData?.previousAverage || null,
+      createdAt: serverTimestamp()
+    })
+
     setNewItem('')
     setOpen(false)
   }
 
-  const removeItem = (index) => {
-    setItems(items.filter((_, i) => i !== index))
+  const removeItem = async (id) => {
+    const user = auth.currentUser
+    if (!user) return
+    await deleteDoc(doc(db, 'users', user.uid, 'shoppingList', id))
+  }
+
+  const normalizeProductId = (name) => {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '_')
+      .replace(/[()\/]/g, '')
+  }
+
+  const handlePriceUpload = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    try {
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data)
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const json = XLSX.utils.sheet_to_json(sheet)
+
+      if (!json.length) {
+        alert('Planilha vazia.')
+        return
+      }
+
+      const requiredColumns = ['Produto', 'UND', 'MAX', 'MAIS FREQUENTE', 'MÍNIMO']
+      const fileColumns = Object.keys(json[0])
+
+      const missingColumns = requiredColumns.filter(
+        col => !fileColumns.includes(col)
+      )
+
+      if (missingColumns.length > 0) {
+        alert(`Colunas faltando: ${missingColumns.join(', ')}`)
+        return
+      }
+
+      const batch = writeBatch(db)
+      let updatedCount = 0
+
+      for (const row of json) {
+        const name = row['Produto']
+        if (!name) continue
+
+        const productId = normalizeProductId(name)
+
+        const max = Number(row['MAX'])
+        const min = Number(row['MÍNIMO'])
+        const average = Number(row['MAIS FREQUENTE'])
+        const unit = row['UND'] || null
+
+        if (isNaN(max) || isNaN(min) || isNaN(average)) continue
+        if (!(min <= average && average <= max)) continue
+
+        // 🔥 Create product if not exists
+        const productRef = doc(db, 'products', productId)
+        const productSnap = await getDoc(productRef)
+
+        if (!productSnap.exists()) {
+          batch.set(productRef, {
+            name,
+            unit,
+            createdAt: serverTimestamp()
+          })
+        }
+
+        // 🔥 Update price
+        const priceRef = doc(db, 'prices', productId)
+        const existingSnap = await getDoc(priceRef)
+
+        let previousAverage = null
+        if (existingSnap.exists()) {
+          previousAverage = existingSnap.data().average ?? null
+        }
+
+        batch.set(priceRef, {
+          max,
+          min,
+          average,
+          previousAverage,
+          updatedAt: serverTimestamp()
+        })
+
+        updatedCount++
+      }
+
+      if (updatedCount === 0) {
+        alert('Nenhuma linha válida encontrada.')
+        return
+      }
+
+      await batch.commit()
+
+      alert(`${updatedCount} produtos atualizados com sucesso!`)
+    } catch (error) {
+      console.error(error)
+      alert('Erro ao processar planilha.')
+    }
   }
 
   const handleChangePassword = async () => {
     setPasswordError('')
     setPasswordMessage('')
-
     try {
       await updatePassword(auth.currentUser, newPassword)
       setPasswordMessage('Senha alterada com sucesso!')
       setNewPassword('')
-    } catch (err) {
+    } catch {
       setPasswordError('Faça login novamente para alterar a senha.')
     }
   }
@@ -74,9 +253,20 @@ function MainScreen() {
     await signOut(auth)
   }
 
+  const getPriceColor = (current, previous) => {
+    if (!previous) return 'white'
+    if (current > previous) return '#ffebee'
+    if (current < previous) return '#e8f5e9'
+    return 'white'
+  }
+
+  const getProductName = (productId) => {
+    const product = products.find(p => p.id === productId)
+    return product ? product.name : productId
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', pb: 7 }}>
-      {/* AppBar */}
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -85,11 +275,9 @@ function MainScreen() {
         </Toolbar>
       </AppBar>
 
-      {/* Main Content */}
       <Container sx={{ mt: 2 }}>
-        {/* LISTA TAB */}
         {navValue === 0 && (
-          <Paper sx={{ flexGrow: 1, overflow: 'auto', p: 1, minHeight: '60vh' }}>
+          <Paper sx={{ p: 1, minHeight: '60vh' }}>
             {items.length === 0 ? (
               <Typography textAlign="center" color="text.secondary" sx={{ mt: 2 }}>
                 Nenhum item na lista
@@ -97,19 +285,28 @@ function MainScreen() {
             ) : (
               <List>
                 <TransitionGroup>
-                  {items.map((item, index) => (
-                    <CSSTransition key={index} timeout={300} classNames="item">
+                  {items.map((item) => (
+                    <CSSTransition key={item.id} timeout={300} classNames="item">
                       <ListItem
+                        sx={{
+                          backgroundColor: getPriceColor(item.price, item.previousPrice),
+                          mb: 1,
+                          borderRadius: 1
+                        }}
                         secondaryAction={
-                          <IconButton
-                            edge="end"
-                            onClick={() => removeItem(index)}
-                          >
+                          <IconButton onClick={() => removeItem(item.id)}>
                             <DeleteIcon />
                           </IconButton>
                         }
                       >
-                        <ListItemText primary={item} />
+                        <ListItemText
+                          primary={getProductName(item.productId)}
+                          secondary={
+                            item.price
+                              ? `Preço médio: R$ ${item.price}`
+                              : 'Sem preço disponível'
+                          }
+                        />
                       </ListItem>
                     </CSSTransition>
                   ))}
@@ -119,17 +316,13 @@ function MainScreen() {
           </Paper>
         )}
 
-        {/* CONFIGURAÇÕES TAB */}
         {navValue === 1 && (
           <Paper sx={{ p: 3, minHeight: '60vh' }}>
             <Typography variant="h6" mb={2}>
               Configurações
             </Typography>
 
-            <Typography variant="subtitle1" gutterBottom>
-              Alterar Senha
-            </Typography>
-
+            <Typography variant="subtitle1">Alterar Senha</Typography>
             <TextField
               label="Nova Senha"
               type="password"
@@ -139,55 +332,47 @@ function MainScreen() {
               sx={{ mb: 2 }}
             />
 
-            {passwordError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {passwordError}
-              </Alert>
-            )}
+            {passwordError && <Alert severity="error">{passwordError}</Alert>}
+            {passwordMessage && <Alert severity="success">{passwordMessage}</Alert>}
 
-            {passwordMessage && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                {passwordMessage}
-              </Alert>
-            )}
-
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleChangePassword}
-              sx={{ mb: 3 }}
-            >
+            <Button variant="contained" fullWidth onClick={handleChangePassword} sx={{ mb: 2 }}>
               Alterar Senha
             </Button>
 
-            <Button
-              variant="outlined"
-              color="error"
-              fullWidth
-              onClick={handleLogout}
-            >
+            <Button variant="outlined" color="error" fullWidth onClick={handleLogout}>
               Sair
             </Button>
+
+            {isAdmin && (
+              <>
+                <Typography variant="subtitle1" sx={{ mt: 4 }}>
+                  Upload Planilha de Preços
+                </Typography>
+                <Button variant="outlined" component="label" fullWidth sx={{ mt: 2 }}>
+                  Selecionar Arquivo CSV/XLSX
+                  <input
+                    type="file"
+                    hidden
+                    accept=".csv,.xlsx"
+                    onChange={handlePriceUpload}
+                  />
+                </Button>
+              </>
+            )}
           </Paper>
         )}
       </Container>
 
-      {/* Floating Action Button (only in Lista tab) */}
       {navValue === 0 && (
         <Fab
           color="primary"
           onClick={() => setOpen(true)}
-          sx={{
-            position: 'fixed',
-            bottom: 70,
-            right: 20,
-          }}
+          sx={{ position: 'fixed', bottom: 70, right: 20 }}
         >
           <AddIcon />
         </Fab>
       )}
 
-      {/* Modal for Adding Item */}
       <Modal open={open} onClose={() => setOpen(false)}>
         <Box
           sx={{
@@ -199,30 +384,40 @@ function MainScreen() {
             maxWidth: 400,
             bgcolor: 'background.paper',
             p: 3,
-            borderRadius: 2,
+            borderRadius: 2
           }}
         >
           <Typography variant="h6" mb={2}>
             Adicionar Item
           </Typography>
-          <TextField
-            label="Novo item"
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            fullWidth
-          />
+
+          <FormControl fullWidth>
+            <InputLabel>Produto</InputLabel>
+            <Select
+              value={newItem}
+              label="Produto"
+              onChange={(e) => setNewItem(e.target.value)}
+            >
+              {products.map((product) => (
+                <MenuItem key={product.id} value={product.id}>
+                  {product.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <Button
             variant="contained"
             sx={{ mt: 2 }}
             fullWidth
             onClick={addItem}
+            disabled={!newItem}
           >
             Adicionar
           </Button>
         </Box>
       </Modal>
 
-      {/* Bottom Navigation */}
       <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} elevation={3}>
         <BottomNavigation
           showLabels

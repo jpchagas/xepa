@@ -30,161 +30,263 @@ firebase deploy --only hosting
 
 ## Current Context
 
-📱 Xepa – Project Context Summary
+XEPA – Current Application State (V1 Simplified Architecture)
+✅ Core Concept
 
-I am building Xepa, a mobile-first shopping list PWA using:
+A simple grocery list app that:
 
-React (Vite)
+Allows users to create a shopping list
 
-Material UI
+Shows average product price
 
-React Router
+Highlights price changes (increase/decrease)
 
-Firebase (Auth + future Firestore)
+Allows admin to upload price spreadsheets
 
-vite-plugin-pwa
+Auto-creates products from uploaded files
 
-The goal is to create a native-like, offline-first shopping list app.
+No regional/state complexity anymore.
 
-🏗 Current Architecture
-Routing
+🧱 Current Firestore Structure
+1️⃣ users
+users/{userId}
+  email
+  createdAt
 
-/ → SplashScreen
+Each authenticated user has a document.
 
-/login → Login
+2️⃣ users/{userId}/shoppingList
+shoppingList/{itemId}
+  productId
+  price              // current average at time of adding
+  previousPrice      // previous average snapshot
+  createdAt
 
-/register → Register
+Important:
 
-/forgot-password → ForgotPassword
+Price is SNAPSHOT at time of adding
 
-/main → MainScreen (protected route via Firebase Auth)
+Does NOT auto-update when price table updates (intentional V1 simplicity)
 
-App.jsx uses Firebase onAuthStateChanged to control protected access.
+3️⃣ products
+products/{productId}
+  name
+  unit
+  createdAt
 
-🔐 Authentication (Firebase)
+Auto-created during spreadsheet upload
 
-Firebase is fully integrated.
+productId is normalized from product name:
 
-Implemented:
+lowercase
 
-Email/password registration
+accents removed
 
-Login
+spaces → underscore
 
-Forgot password (email reset)
+special chars removed
 
-Change password (inside Settings tab)
+Example:
 
-Logout
+Arroz Tipo 1 (5kg)
+→ arroz_tipo_1_5kg
+4️⃣ prices
+prices/{productId}
+  max
+  min
+  average
+  previousAverage
+  updatedAt
 
-Auth state persistence
+Single global price per product.
 
-Firebase config is loaded via .env using VITE_ variables.
+No states.
+No regions.
+No nesting.
 
-🛒 Main Features
-Shopping List (MainScreen)
+📊 Spreadsheet Upload Logic
+Required Columns
+Produto
+UND
+MAX
+MAIS FREQUENTE
+MÍNIMO
 
-Add items (FAB + modal)
+Validation includes:
 
-Delete items
+Required columns must exist
 
-Smooth animations (react-transition-group)
+Numeric validation for max/min/average
 
-Bottom Navigation:
+Ensures:
+min ≤ average ≤ max
 
-Lista
+Upload Behavior
 
-Configurações
+For each row:
 
-Settings Tab
+Normalize productId
+
+If product doesn't exist → create it
+
+Fetch existing price
+
+Move current average → previousAverage
+
+Write new price
+
+Batch commit
+
+Result:
+
+Atomic update
+
+Safe overwrite
+
+Price history (1-step memory)
+
+🎨 UI Behavior
+🧾 List Screen
+
+Displays user shopping list
+
+Shows:
+
+Product name
+
+“Preço médio: R$ X”
+
+Background color logic:
+
+🔴 Light red → price increased
+
+🟢 Light green → price decreased
+
+⚪ White → unchanged or no previous
+
+⚙️ Settings Screen
+
+Contains:
 
 Change password
 
 Logout
 
-📦 Persistence
+Admin-only:
 
-Currently:
+Price spreadsheet upload button
 
-Shopping list stored in localStorage
+Admin defined as:
 
-Next planned step:
+auth.currentUser?.email === 'jpchagas@gmail.com'
+🔐 Security Rules (Current State)
 
-Move shopping list to Firestore
+Users can only access their own user document
 
-Per-user list storage
+Users can only access their own shoppingList
 
-Real-time sync
+Authenticated users can read/write:
 
-Offline-first Firestore caching
+products
 
-📲 PWA Setup
+prices
 
-Using vite-plugin-pwa:
+Working correctly.
 
-Manifest configured
+🧠 Architectural Philosophy (Now)
 
-Service worker enabled
+We intentionally removed:
 
-Theme color configured
+❌ State selection
+❌ Regional prices
+❌ Category parsing
+❌ Complex ingestion logic
+❌ Multi-layer price nesting
 
-Static assets cached
+Current system is:
 
-App installable
+Simple
+Deterministic
+Easy to reason about
+Easy to scale later
 
-🎨 Native App Feel Improvements Done
+This is a strong V1 foundation.
 
-Removed Vite default layout constraints
+⚠️ Known Limitations (Intentional)
 
-Fixed full-screen rendering
+Shopping list prices don’t auto-update after upload
 
-Removed centered layout
+Only 1-step price history (previousAverage)
 
-Replaced 100vh with 100dvh
+No price trend %
 
-Ensured html, body, #root are 100% height
+No multi-list support yet
 
-Removed max-width limitation on #root
+No admin role system (email hardcoded)
 
-Edge-to-edge mobile layout
+All acceptable for V1.
 
-The app now fills the full mobile screen correctly.
+📈 What Is Solid Right Now
 
-🚀 Next Planned Improvements
+Firestore configuration
 
-Replace localStorage with Firestore (per-user data)
+Security rules
 
-Enable Firestore offline persistence
+Upload pipeline
 
-Add checkboxes (mark item as purchased)
+Product auto-creation
 
-Add categories
+Clean data normalization
 
-Add priority levels
+Stable UI
 
-Improve native UX (swipe to delete, haptics, etc.)
+Real-time list updates
 
-Improve PWA caching strategy for dynamic content
+Batch price writes
 
-Add profile management
+You now have:
 
-Add reauthentication for secure password changes
+A functioning grocery price intelligence MVP.
 
-Optimize for production Firebase deployment
+That’s real progress.
 
-🎯 Current Status
+🚀 Tomorrow – Possible Next Steps
 
-Authentication works.
-UI is mobile-native.
-App fills entire screen.
-Settings tab works.
-Logout works.
-Password change works.
-PWA installs properly.
+We can work on:
 
-Ready to move to Firestore integration and full offline-first architecture.
+🔥 % price variation indicator
 
-Tomorrow, just say:
+📅 “Last updated” badge
+
+📊 Price trend arrows
+
+🧠 Automatic list price refresh
+
+🏗 Multi-list architecture (users_lists + lists)
+
+🔐 Proper admin role system
+
+📈 Historical price tracking (priceHistory collection)
+
+💰 Total cart estimation at bottom
+
+🎨 UX polish & formatting
+
+🚀 Prepare for production deploy
+
+🏁 Final Status
+
+You now have:
+
+✔ Working Firestore
+✔ Working security rules
+✔ Clean simplified schema
+✔ Stable ingestion pipeline
+✔ Auto product creation
+✔ Visual price comparison
+✔ Admin upload working
+
+This is a very healthy V1 state.
 
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
@@ -198,3 +300,15 @@ Unidade(KG, DZ, UND,MOL,BDJ, CX, CXT)
 Max(Max price)
 Mais Frequente(Average price)
 Mínimo(Min price)
+
+
+## Features
+
+🔐 Add user state selection
+
+📊 Add % price variation indicator
+
+🧠 Start substitution engine
+
+• Admin dashboard
+• Auto-refresh price change notifications
