@@ -28,8 +28,6 @@ import AddIcon from '@mui/icons-material/Add'
 import ListIcon from '@mui/icons-material/List'
 import SettingsIcon from '@mui/icons-material/Settings'
 
-import { CSSTransition, TransitionGroup } from 'react-transition-group'
-
 import { auth, db } from './firebase'
 import { updatePassword, signOut } from 'firebase/auth'
 
@@ -42,7 +40,11 @@ import {
   serverTimestamp,
   getDoc,
   setDoc,
-  writeBatch
+  writeBatch,
+  query,
+  orderBy,
+  limit,
+  getDocs
 } from 'firebase/firestore'
 
 import * as XLSX from 'xlsx'
@@ -108,23 +110,62 @@ function MainScreen() {
     }
   }, [])
 
+  // 🔥 Calculate total
+  const totalPrice = items.reduce((sum, item) => {
+    if (!item.price) return sum
+    return sum + Number(item.price)
+  }, 0)
+
+  const formatCurrency = (value) => {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    })
+  }
+
+  const extractDateFromFileName = (fileName) => {
+    const match = fileName.match(/(\d{2})_(\d{2})_(\d{4})/)
+    if (!match) return null
+
+    const [_, day, month, year] = match
+    return `${year}-${month}-${day}`
+  }
+
   const addItem = async () => {
     if (!newItem) return
     const user = auth.currentUser
     if (!user) return
 
-    const priceRef = doc(db, 'prices', newItem)
-    const priceSnap = await getDoc(priceRef)
+    const historyRef = collection(db, 'prices', newItem, 'history')
 
-    let priceData = null
-    if (priceSnap.exists()) {
-      priceData = priceSnap.data()
+    const q = query(
+      historyRef,
+      orderBy('fileDate', 'desc'),
+      limit(2)
+    )
+
+    const snapshot = await getDocs(q)
+
+    let currentPrice = null
+    let previousPrice = null
+    let fileDate = null
+
+    const docs = snapshot.docs
+
+    if (docs.length > 0) {
+      currentPrice = docs[0].data().average
+      fileDate = docs[0].data().fileDate
+    }
+
+    if (docs.length > 1) {
+      previousPrice = docs[1].data().average
     }
 
     await addDoc(collection(db, 'users', user.uid, 'shoppingList'), {
       productId: newItem,
-      price: priceData?.average || null,
-      previousPrice: priceData?.previousAverage || null,
+      price: currentPrice,
+      previousPrice: previousPrice,
+      fileDate,
       createdAt: serverTimestamp()
     })
 
@@ -152,6 +193,13 @@ function MainScreen() {
     if (!file) return
 
     try {
+      const fileDate = extractDateFromFileName(file.name)
+
+      if (!fileDate) {
+        alert('Nome do arquivo inválido. Use padrão: Cotação DD_MM_AAAA.xlsx')
+        return
+      }
+
       const data = await file.arrayBuffer()
       const workbook = XLSX.read(data)
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
@@ -191,7 +239,6 @@ function MainScreen() {
         if (isNaN(max) || isNaN(min) || isNaN(average)) continue
         if (!(min <= average && average <= max)) continue
 
-        // 🔥 Create product if not exists
         const productRef = doc(db, 'products', productId)
         const productSnap = await getDoc(productRef)
 
@@ -203,21 +250,20 @@ function MainScreen() {
           })
         }
 
-        // 🔥 Update price
-        const priceRef = doc(db, 'prices', productId)
-        const existingSnap = await getDoc(priceRef)
+        const priceHistoryRef = doc(
+          db,
+          'prices',
+          productId,
+          'history',
+          fileDate
+        )
 
-        let previousAverage = null
-        if (existingSnap.exists()) {
-          previousAverage = existingSnap.data().average ?? null
-        }
-
-        batch.set(priceRef, {
+        batch.set(priceHistoryRef, {
           max,
           min,
           average,
-          previousAverage,
-          updatedAt: serverTimestamp()
+          fileDate,
+          uploadedAt: serverTimestamp()
         })
 
         updatedCount++
@@ -265,6 +311,11 @@ function MainScreen() {
     return product ? product.name : productId
   }
 
+  const getProductUnit = (productId) => {
+    const product = products.find(p => p.id === productId)
+    return product ? product.unit : ''
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', pb: 7 }}>
       <AppBar position="static">
@@ -277,41 +328,53 @@ function MainScreen() {
 
       <Container sx={{ mt: 2 }}>
         {navValue === 0 && (
-          <Paper sx={{ p: 1, minHeight: '60vh' }}>
+          <Paper sx={{ p: 2, minHeight: '60vh' }}>
             {items.length === 0 ? (
               <Typography textAlign="center" color="text.secondary" sx={{ mt: 2 }}>
                 Nenhum item na lista
               </Typography>
             ) : (
-              <List>
-                <TransitionGroup>
+              <>
+                <List>
                   {items.map((item) => (
-                    <CSSTransition key={item.id} timeout={300} classNames="item">
-                      <ListItem
-                        sx={{
-                          backgroundColor: getPriceColor(item.price, item.previousPrice),
-                          mb: 1,
-                          borderRadius: 1
-                        }}
-                        secondaryAction={
-                          <IconButton onClick={() => removeItem(item.id)}>
-                            <DeleteIcon />
-                          </IconButton>
+                    <ListItem
+                      key={item.id}
+                      sx={{
+                        backgroundColor: getPriceColor(item.price, item.previousPrice),
+                        mb: 1,
+                        borderRadius: 1
+                      }}
+                      secondaryAction={
+                        <IconButton onClick={() => removeItem(item.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemText
+                        primary={getProductName(item.productId)}
+                        secondary={
+                          item.price
+                            ? `Preço médio: ${formatCurrency(item.price)}${getProductUnit(item.productId) ? ` (${getProductUnit(item.productId)})` : ''} - ${item.fileDate}`
+                            : 'Sem preço disponível'
                         }
-                      >
-                        <ListItemText
-                          primary={getProductName(item.productId)}
-                          secondary={
-                            item.price
-                              ? `Preço médio: R$ ${item.price}`
-                              : 'Sem preço disponível'
-                          }
-                        />
-                      </ListItem>
-                    </CSSTransition>
+                      />
+                    </ListItem>
                   ))}
-                </TransitionGroup>
-              </List>
+                </List>
+
+                <Box
+                  sx={{
+                    mt: 2,
+                    pt: 2,
+                    borderTop: '1px solid #eee',
+                    textAlign: 'right'
+                  }}
+                >
+                  <Typography variant="h6">
+                    Total estimado: {formatCurrency(totalPrice)}
+                  </Typography>
+                </Box>
+              </>
             )}
           </Paper>
         )}
