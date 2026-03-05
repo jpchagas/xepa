@@ -30,263 +30,123 @@ firebase deploy --only hosting
 
 ## Current Context
 
-XEPA – Current Application State (V1 Simplified Architecture)
-✅ Core Concept
+Project Summary – Xepa Shopping App
+1. Core Features Implemented
 
-A simple grocery list app that:
+Firebase Integration
 
-Allows users to create a shopping list
+Authentication with auth.currentUser.
 
-Shows average product price
+Firestore collections for users, shoppingList, products, and prices.
 
-Highlights price changes (increase/decrease)
+Profile initialization in users collection for new users.
 
-Allows admin to upload price spreadsheets
+Shopping List
 
-Auto-creates products from uploaded files
+Users can add products from a dropdown list populated from the products collection.
 
-No regional/state complexity anymore.
+Remove products individually from the list.
 
-🧱 Current Firestore Structure
-1️⃣ users
-users/{userId}
-  email
-  createdAt
+Each item stores:
 
-Each authenticated user has a document.
+productId
 
-2️⃣ users/{userId}/shoppingList
-shoppingList/{itemId}
-  productId
-  price              // current average at time of adding
-  previousPrice      // previous average snapshot
-  createdAt
+price (average from last uploaded spreadsheet)
 
-Important:
+previousPrice
 
-Price is SNAPSHOT at time of adding
+fileDate of the uploaded spreadsheet
 
-Does NOT auto-update when price table updates (intentional V1 simplicity)
+createdAt timestamp
 
-3️⃣ products
-products/{productId}
-  name
-  unit
-  createdAt
+Total estimated price calculated and displayed at the bottom of the list.
 
-Auto-created during spreadsheet upload
+Product Info
 
-productId is normalized from product name:
+Products have a name, unit (UND), and price history.
 
-lowercase
+Unit is displayed next to average price in the shopping list:
+Preço médio: R$ XX,XX (kg) or (unit).
 
-accents removed
+Price Upload (Admin Only)
 
-spaces → underscore
+Admin can upload CSV/XLSX spreadsheets for product prices.
 
-special chars removed
+Spreadsheet must include columns: Produto, UND, MAX, MAIS FREQUENTE, MÍNIMO.
 
-Example:
+Updates or creates products and their price history in Firestore.
 
-Arroz Tipo 1 (5kg)
-→ arroz_tipo_1_5kg
-4️⃣ prices
-prices/{productId}
-  max
-  min
-  average
-  previousAverage
-  updatedAt
+Validates numeric ranges (MIN ≤ AVG ≤ MAX).
 
-Single global price per product.
+Settings
 
-No states.
-No regions.
-No nesting.
+Users can change password.
 
-📊 Spreadsheet Upload Logic
-Required Columns
-Produto
-UND
-MAX
-MAIS FREQUENTE
-MÍNIMO
+Users can logout.
 
-Validation includes:
+Admins see the file upload option.
 
-Required columns must exist
+2. UI / Material-UI
 
-Numeric validation for max/min/average
+Main layout with AppBar, Container, and BottomNavigation:
 
-Ensures:
-min ≤ average ≤ max
+Lista – shows shopping list with total.
 
-Upload Behavior
+Configurações – shows settings and upload (admin only).
 
-For each row:
+Modal for adding new items.
 
-Normalize productId
+FAB button for opening the modal to add items.
 
-If product doesn't exist → create it
+Paper / ListItem cards show individual items, with background color based on price comparison:
 
-Fetch existing price
+Red if price increased.
 
-Move current average → previousAverage
+Green if price decreased.
 
-Write new price
+White if unchanged or no previous price.
 
-Batch commit
+3. Animations
 
-Result:
+Previously used CSSTransition / TransitionGroup for item animations.
 
-Atomic update
+Removed for now due to React 18+ incompatibility (findDOMNode error on updates).
 
-Safe overwrite
+4. File Parsing & Data Handling
 
-Price history (1-step memory)
+XLSX spreadsheets are parsed into JSON.
 
-🎨 UI Behavior
-🧾 List Screen
+Data is validated for numeric fields and column names.
 
-Displays user shopping list
+Firestore batch writes are used to commit updates efficiently.
 
-Shows:
+Handles invalid filenames, empty sheets, or missing columns with alerts.
 
-Product name
+5. Calculations
 
-“Preço médio: R$ X”
+Total price of items in the shopping list calculated in real-time.
 
-Background color logic:
+Format currency in BRL using Intl.NumberFormat.
 
-🔴 Light red → price increased
+Average price is displayed with its corresponding unit from the product collection.
 
-🟢 Light green → price decreased
+6. Remaining / Next Steps
 
-⚪ White → unchanged or no previous
+Optional improvements to consider tomorrow:
 
-⚙️ Settings Screen
+Add unit-specific totals (e.g., total kg, total L) in the shopping list.
 
-Contains:
+Implement sorting or filtering in the shopping list.
 
-Change password
+Add bulk delete or edit quantities for items.
 
-Logout
+Reintroduce animations safely (React 18 compatible) if desired.
 
-Admin-only:
+UI/UX polishing: show price changes with arrows, better alerts, or modals.
 
-Price spreadsheet upload button
+Optionally handle multiple files and show last update date.
 
-Admin defined as:
-
-auth.currentUser?.email === 'jpchagas@gmail.com'
-🔐 Security Rules (Current State)
-
-Users can only access their own user document
-
-Users can only access their own shoppingList
-
-Authenticated users can read/write:
-
-products
-
-prices
-
-Working correctly.
-
-🧠 Architectural Philosophy (Now)
-
-We intentionally removed:
-
-❌ State selection
-❌ Regional prices
-❌ Category parsing
-❌ Complex ingestion logic
-❌ Multi-layer price nesting
-
-Current system is:
-
-Simple
-Deterministic
-Easy to reason about
-Easy to scale later
-
-This is a strong V1 foundation.
-
-⚠️ Known Limitations (Intentional)
-
-Shopping list prices don’t auto-update after upload
-
-Only 1-step price history (previousAverage)
-
-No price trend %
-
-No multi-list support yet
-
-No admin role system (email hardcoded)
-
-All acceptable for V1.
-
-📈 What Is Solid Right Now
-
-Firestore configuration
-
-Security rules
-
-Upload pipeline
-
-Product auto-creation
-
-Clean data normalization
-
-Stable UI
-
-Real-time list updates
-
-Batch price writes
-
-You now have:
-
-A functioning grocery price intelligence MVP.
-
-That’s real progress.
-
-🚀 Tomorrow – Possible Next Steps
-
-We can work on:
-
-🔥 % price variation indicator
-
-📅 “Last updated” badge
-
-📊 Price trend arrows
-
-🧠 Automatic list price refresh
-
-🏗 Multi-list architecture (users_lists + lists)
-
-🔐 Proper admin role system
-
-📈 Historical price tracking (priceHistory collection)
-
-💰 Total cart estimation at bottom
-
-🎨 UX polish & formatting
-
-🚀 Prepare for production deploy
-
-🏁 Final Status
-
-You now have:
-
-✔ Working Firestore
-✔ Working security rules
-✔ Clean simplified schema
-✔ Stable ingestion pipeline
-✔ Auto product creation
-✔ Visual price comparison
-✔ Admin upload working
-
-This is a very healthy V1 state.
+You’ve basically got a fully functional shopping list app with Firebase backend, admin price uploads, and total price calculations.
 
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
