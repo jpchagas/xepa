@@ -30,123 +30,399 @@ firebase deploy --only hosting
 
 ## Current Context
 
-Project Summary – Xepa Shopping App
-1. Core Features Implemented
+Xepa – Development Summary (Session Log)
+1. Project Overview
 
-Firebase Integration
+You are building Xepa, a grocery planning web app that:
 
-Authentication with auth.currentUser.
+imports price data from supermarket spreadsheets
 
-Firestore collections for users, shoppingList, products, and prices.
+calculates average product prices
 
-Profile initialization in users collection for new users.
+lets users create a shopping list
+
+estimates total grocery cost
+
+Stack:
+
+Frontend: React + Material UI
+
+Backend: Firebase
+
+Database: Firestore
+
+Auth: Firebase Authentication
+
+Spreadsheet parsing: XLSX
+
+2. Current Features Implemented
+Authentication
+
+Users authenticate with Firebase Auth.
+
+User profile document is created automatically:
+
+users/{uid}
+    email
+    createdAt
+Product Database
+
+Products are stored globally:
+
+products/{productId}
+    name
+    unit
+    createdAt
+
+Example:
+
+products/ovo_branco
+    name: "Ovo Branco"
+    unit: "DZ"
+Price History System
+
+Prices are imported from Excel spreadsheets.
+
+Structure:
+
+prices/{productId}/history/{fileDate}
+    max
+    min
+    average
+    fileDate
+    uploadedAt
+
+Example:
+
+prices/ovo_branco/history/2025-03-05
+    max: 14
+    min: 10
+    average: 12
+
+Spreadsheet validation includes:
+
+Required columns:
+
+Produto
+UND
+MAX
+MAIS FREQUENTE
+MÍNIMO
+
+Validation rules:
+
+values must be numbers
+
+min ≤ average ≤ max
+
+Upload is performed with Firestore batch writes.
 
 Shopping List
 
-Users can add products from a dropdown list populated from the products collection.
+Each user currently has their own list:
 
-Remove products individually from the list.
+users/{uid}/shoppingList/{itemId}
 
-Each item stores:
+Item structure:
 
 productId
-
-price (average from last uploaded spreadsheet)
-
+price
 previousPrice
+amount
+fileDate
+createdAt
 
-fileDate of the uploaded spreadsheet
+When adding an item:
 
-createdAt timestamp
+The system loads the two latest price records
 
-Total estimated price calculated and displayed at the bottom of the list.
+Assigns:
 
-Product Info
+price = latest average
 
-Products have a name, unit (UND), and price history.
+previousPrice = previous average
 
-Unit is displayed next to average price in the shopping list:
-Preço médio: R$ XX,XX (kg) or (unit).
+Price Trend Highlight
 
-Price Upload (Admin Only)
+List items visually show price changes.
 
-Admin can upload CSV/XLSX spreadsheets for product prices.
+Color logic:
 
-Spreadsheet must include columns: Produto, UND, MAX, MAIS FREQUENTE, MÍNIMO.
+if current > previous → red
+if current < previous → green
+if equal → white
+Unit Conversion System
 
-Updates or creates products and their price history in Firestore.
+Special logic implemented for DZ (dozen) products.
 
-Validates numeric ranges (MIN ≤ AVG ≤ MAX).
+Example:
+
+Spreadsheet price:
+
+Eggs (DZ) = R$12
+
+Displayed in UI:
+
+Preço médio: R$1.00 (un)
+
+Implementation:
+
+getEffectivePrice()
+if unit === 'DZ'
+price / 12
+
+This allows users to input quantities per unit instead of per dozen.
+
+Total Price Calculation
+
+Estimated total cost:
+
+sum(
+ effectivePrice * amount
+)
+
+Displayed at bottom of list.
+
+Product Name Normalization
+
+Product IDs are normalized:
+
+Example:
+
+Arroz Branco (5kg)
+
+becomes
+
+arroz_branco_5kg
+
+Rules:
+
+lowercase
+
+remove accents
+
+spaces → _
+
+remove () and /
+
+Admin Features
+
+Admin email:
+
+jpchagas@gmail.com
+
+Admin can:
+
+upload new price spreadsheets
+
+update price history
+
+UI Components
+
+Material UI layout includes:
+
+AppBar
+
+List
+
+Floating add button
+
+Quantity input
+
+Delete item button
+
+Total cost summary
+
+Current Firestore Structure
+users
+   uid
+      email
+      createdAt
+
+      shoppingList
+         itemId
+            productId
+            price
+            previousPrice
+            amount
+
+products
+   productId
+      name
+      unit
+
+prices
+   productId
+      history
+         fileDate
+            min
+            max
+            average
+Features Built in This Session
+1️⃣ DZ unit conversion
+
+Correct price per unit calculation.
+
+2️⃣ Effective price logic
+getEffectivePrice(productId, price)
+
+Used in:
+
+item display
+
+total calculation
+
+3️⃣ Improved list item totals
+
+Each item shows:
+
+Preço médio
+Total do item
+4️⃣ Spreadsheet validation improvements
+
+Checks:
+
+correct column names
+
+valid price relationships
+
+non-empty data
+
+Feature Discussed but NOT Implemented Yet
+Shared Lists
+
+Goal:
+
+Allow multiple users to edit the same shopping list.
+
+Proposed structure:
+
+lists/{listId}
+    name
+    members[]
+
+lists/{listId}/items/{itemId}
+
+This would replace:
+
+users/{uid}/shoppingList
+
+Benefits:
+
+couples sharing groceries
+
+roommates
+
+family planning
+
+Not implemented yet.
+
+Next Development Tasks
+Priority 1
+
+Implement shared lists.
+
+Steps:
+
+create lists collection
+
+move items to:
+
+lists/{listId}/items
+
+store list members
+
+load lists with:
+
+array-contains user.uid
+Priority 2
+
+Invite users by email.
+
+Flow:
+
+enter email
+lookup user
+add UID to list members
+Priority 3
+
+Multiple lists support.
+
+Example:
+
+Casa
+Churrasco
+Festa
+Priority 4
+
+List sharing UI.
+
+Possible UI:
 
 Settings
+Share list
+Invite user
+Nice Future Features
 
-Users can change password.
+Ideas that would significantly improve the app:
 
-Users can logout.
+Price history chart
+Egg price trend over time
+Cheapest store detection
 
-Admins see the file upload option.
+Using the price data.
 
-2. UI / Material-UI
+Price alerts
+Eggs dropped 20%
+Offline support
 
-Main layout with AppBar, Container, and BottomNavigation:
+Firestore supports this easily.
 
-Lista – shows shopping list with total.
+Mobile install (PWA)
 
-Configurações – shows settings and upload (admin only).
+Turn the app into an installable phone app.
 
-Modal for adding new items.
+Current App Status
 
-FAB button for opening the modal to add items.
+Development stage:
 
-Paper / ListItem cards show individual items, with background color based on price comparison:
+MVP+
 
-Red if price increased.
+Working features:
 
-Green if price decreased.
+authentication
 
-White if unchanged or no previous price.
+spreadsheet price ingestion
 
-3. Animations
+price history
 
-Previously used CSSTransition / TransitionGroup for item animations.
+smart unit conversion
 
-Removed for now due to React 18+ incompatibility (findDOMNode error on updates).
+shopping list
 
-4. File Parsing & Data Handling
+cost estimation
 
-XLSX spreadsheets are parsed into JSON.
+Remaining core feature:
 
-Data is validated for numeric fields and column names.
+shared lists
 
-Firestore batch writes are used to commit updates efficiently.
+Quick Restart Instructions (Tomorrow)
 
-Handles invalid filenames, empty sheets, or missing columns with alerts.
+1️⃣ Start dev server
 
-5. Calculations
+npm run dev
 
-Total price of items in the shopping list calculated in real-time.
+or
 
-Format currency in BRL using Intl.NumberFormat.
+npm start
 
-Average price is displayed with its corresponding unit from the product collection.
+2️⃣ Open project
 
-6. Remaining / Next Steps
+src/MainScreen.jsx
 
-Optional improvements to consider tomorrow:
+3️⃣ Next work item:
 
-Add unit-specific totals (e.g., total kg, total L) in the shopping list.
-
-Implement sorting or filtering in the shopping list.
-
-Add bulk delete or edit quantities for items.
-
-Reintroduce animations safely (React 18 compatible) if desired.
-
-UI/UX polishing: show price changes with arrows, better alerts, or modals.
-
-Optionally handle multiple files and show last update date.
-
-You’ve basically got a fully functional shopping list app with Firebase backend, admin price uploads, and total price calculations.
+Implement shared lists structure.
 
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
@@ -172,3 +448,6 @@ Mínimo(Min price)
 
 • Admin dashboard
 • Auto-refresh price change notifications
+
+- Share List
+- Advertising
