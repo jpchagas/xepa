@@ -451,3 +451,5 @@ Mínimo(Min price)
 
 - Share List
 - Advertising
+- Replace Select for Autocomplete
+- Creation of multiple lists

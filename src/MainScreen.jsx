@@ -1,65 +1,22 @@
 import { useState, useEffect } from 'react'
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
-  Paper,
-  AppBar,
-  Toolbar,
-  Fab,
-  Container,
-  BottomNavigation,
-  BottomNavigationAction,
-  Modal,
-  Alert,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel
-} from '@mui/material'
-
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
-import ListIcon from '@mui/icons-material/List'
-import SettingsIcon from '@mui/icons-material/Settings'
-
+import { Box, Container, AppBar, Toolbar, Typography, Modal } from '@mui/material'
 import { auth, db } from './firebase'
 import { updatePassword, signOut } from 'firebase/auth'
-
-import {
-  collection,
-  doc,
-  addDoc,
-  deleteDoc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-  getDoc,
-  setDoc,
-  writeBatch,
-  query,
-  orderBy,
-  limit,
-  getDocs
-} from 'firebase/firestore'
-
+import { collection, doc, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, getDoc, setDoc, writeBatch, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
 
-import './MainScreen.css'
+import AddItemFab from './AddItemFab'
+import MainBottomNavigation from './MainBottomNavigation'
+import AddItemModal from './AddItemModal'
+import ShoppingList from './ShoppingList'
+import SettingsPanel from './SettingsPanel'
 
 function MainScreen() {
-
   const [items, setItems] = useState([])
   const [products, setProducts] = useState([])
   const [newItem, setNewItem] = useState('')
   const [open, setOpen] = useState(false)
   const [navValue, setNavValue] = useState(0)
-
   const [newPassword, setNewPassword] = useState('')
   const [passwordMessage, setPasswordMessage] = useState('')
   const [passwordError, setPasswordError] = useState('')
@@ -67,7 +24,6 @@ function MainScreen() {
   const isAdmin = auth.currentUser?.email === 'jpchagas@gmail.com'
 
   useEffect(() => {
-
     const user = auth.currentUser
     if (!user) return
 
@@ -75,48 +31,20 @@ function MainScreen() {
 
     const loadUserProfile = async () => {
       const snap = await getDoc(userDocRef)
-
-      if (!snap.exists()) {
-        await setDoc(userDocRef, {
-          email: user.email,
-          createdAt: serverTimestamp()
-        })
-      }
+      if (!snap.exists()) await setDoc(userDocRef, { email: user.email, createdAt: serverTimestamp() })
     }
 
     loadUserProfile()
 
-    const unsubscribeItems = onSnapshot(
-      collection(db, 'users', user.uid, 'shoppingList'),
-      (snapshot) => {
+    const unsubscribeItems = onSnapshot(collection(db, 'users', user.uid, 'shoppingList'), snapshot => {
+      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+    })
 
-        const list = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
+    const unsubscribeProducts = onSnapshot(collection(db, 'products'), snapshot => {
+      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+    })
 
-        setItems(list)
-      }
-    )
-
-    const unsubscribeProducts = onSnapshot(
-      collection(db, 'products'),
-      (snapshot) => {
-
-        const list = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-
-        setProducts(list)
-      }
-    )
-
-    return () => {
-      unsubscribeItems()
-      unsubscribeProducts()
-    }
-
+    return () => { unsubscribeItems(); unsubscribeProducts() }
   }, [])
 
   const formatCurrency = (value) => {
@@ -395,299 +323,44 @@ function MainScreen() {
   }
 
   return (
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', pb: 7 }}>
+      <AppBar position="static"><Toolbar><Typography variant="h6" sx={{ flexGrow: 1 }}>Xepa</Typography></Toolbar></AppBar>
 
-  <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', pb: 7 }}>
-
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          Xepa
-        </Typography>
-      </Toolbar>
-    </AppBar>
-
-    <Container sx={{ mt: 2 }}>
-
-      {navValue === 0 && (
-
-        <Paper sx={{ p: 2, minHeight: '60vh' }}>
-
-          {items.length === 0 ? (
-
-            <Typography
-              textAlign="center"
-              color="text.secondary"
-              sx={{ mt: 2 }}
-            >
-              Nenhum item na lista
-            </Typography>
-
-          ) : (
-
-            <>
-              <List>
-
-                {items.map((item) => {
-
-                  const effectivePrice = getEffectivePrice(item.productId, item.price)
-                  const amount = item.amount || 1
-                  const itemTotal = effectivePrice * amount
-
-                  return (
-
-                    <ListItem
-                      key={item.id}
-                      sx={{
-                        backgroundColor: getPriceColor(item.price, item.previousPrice),
-                        mb: 1,
-                        borderRadius: 1
-                      }}
-                      secondaryAction={
-                        <IconButton onClick={() => removeItem(item.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      }
-                    >
-
-                      <TextField
-                        type="number"
-                        size="small"
-                        label="Qtd"
-                        value={amount}
-                        sx={{ width: 90, mr: 2 }}
-                        inputProps={{
-                          step: 0.1,
-                          min: 0
-                        }}
-                        onChange={(e) =>
-                          updateAmount(item.id, e.target.value)
-                        }
-                      />
-
-                      <ListItemText
-                        primary={getProductName(item.productId)}
-                        secondary={
-                          item.price
-                            ? `Preço médio: ${formatCurrency(effectivePrice)} (${getDisplayUnit(item.productId)}) • Total: ${formatCurrency(itemTotal)}`
-                            : 'Sem preço disponível'
-                        }
-                      />
-
-                    </ListItem>
-
-                  )
-
-                })}
-
-              </List>
-
-              <Box
-                sx={{
-                  mt: 2,
-                  pt: 2,
-                  borderTop: '1px solid #eee',
-                  textAlign: 'right'
-                }}
-              >
-                <Typography variant="h6">
-                  Total estimado: {formatCurrency(totalPrice)}
-                </Typography>
-              </Box>
-            </>
-          )}
-
-        </Paper>
-
-      )}
-
-      {navValue === 1 && (
-
-        <Paper sx={{ p: 3, minHeight: '60vh' }}>
-
-          <Typography variant="h6" mb={2}>
-            Configurações
-          </Typography>
-
-          <Typography variant="subtitle1">
-            Alterar Senha
-          </Typography>
-
-          <TextField
-            label="Nova Senha"
-            type="password"
-            fullWidth
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            sx={{ mb: 2 }}
+      <Container sx={{ mt: 2 }}>
+        {navValue === 0 && (
+          <ShoppingList
+            items={items}
+            getProductName={getProductName}
+            getProductUnit={getProductUnit}
+            getDisplayUnit={getDisplayUnit}
+            getEffectivePrice={getEffectivePrice}
+            updateAmount={updateAmount}
+            removeItem={removeItem}
+            getPriceColor={getPriceColor}
+            formatCurrency={formatCurrency}
+            totalPrice={totalPrice}
           />
+        )}
 
-          {passwordError && (
-            <Alert severity="error">
-              {passwordError}
-            </Alert>
-          )}
+        {navValue === 1 && (
+          <SettingsPanel
+            newPassword={newPassword}
+            setNewPassword={setNewPassword}
+            passwordError={passwordError}
+            passwordMessage={passwordMessage}
+            handleChangePassword={handleChangePassword}
+            handleLogout={handleLogout}
+            isAdmin={isAdmin}
+            handlePriceUpload={handlePriceUpload}
+          />
+        )}
+      </Container>
 
-          {passwordMessage && (
-            <Alert severity="success">
-              {passwordMessage}
-            </Alert>
-          )}
-
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={handleChangePassword}
-            sx={{ mb: 2 }}
-          >
-            Alterar Senha
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="error"
-            fullWidth
-            onClick={handleLogout}
-          >
-            Sair
-          </Button>
-
-          {isAdmin && (
-            <>
-              <Typography variant="subtitle1" sx={{ mt: 4 }}>
-                Upload Planilha de Preços
-              </Typography>
-
-              <Button
-                variant="outlined"
-                component="label"
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                Selecionar Arquivo CSV/XLSX
-                <input
-                  type="file"
-                  hidden
-                  accept=".csv,.xlsx"
-                  onChange={handlePriceUpload}
-                />
-              </Button>
-            </>
-          )}
-
-        </Paper>
-
-      )}
-
-    </Container>
-
-    {navValue === 0 && (
-      <Fab
-        color="primary"
-        onClick={() => setOpen(true)}
-        sx={{
-          position: 'fixed',
-          bottom: 80,
-          right: 20
-        }}
-      >
-        <AddIcon />
-      </Fab>
-    )}
-
-    <Modal open={open} onClose={() => setOpen(false)}>
-
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '90%',
-          maxWidth: 400,
-          bgcolor: 'background.paper',
-          p: 3,
-          borderRadius: 2
-        }}
-      >
-
-        <Typography variant="h6" mb={2}>
-          Adicionar Item
-        </Typography>
-
-        <FormControl fullWidth>
-
-          <InputLabel>Produto</InputLabel>
-
-          <Select
-            value={newItem}
-            label="Produto"
-            onChange={(e) => setNewItem(e.target.value)}
-          >
-
-            {products
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((product) => (
-
-                <MenuItem
-                  key={product.id}
-                  value={product.id}
-                >
-                  {product.name}
-                </MenuItem>
-
-              ))}
-
-          </Select>
-
-        </FormControl>
-
-        <Button
-          variant="contained"
-          sx={{ mt: 2 }}
-          fullWidth
-          onClick={addItem}
-          disabled={!newItem}
-        >
-          Adicionar
-        </Button>
-
-      </Box>
-
-    </Modal>
-
-    <Paper
-      sx={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0
-      }}
-      elevation={3}
-    >
-
-      <BottomNavigation
-        showLabels
-        value={navValue}
-        onChange={(event, newValue) => setNavValue(newValue)}
-      >
-
-        <BottomNavigationAction
-          label="Lista"
-          icon={<ListIcon />}
-        />
-
-        <BottomNavigationAction
-          label="Configurações"
-          icon={<SettingsIcon />}
-        />
-
-      </BottomNavigation>
-
-    </Paper>
-
-  </Box>
-
-)
+      {navValue === 0 && <AddItemFab onClick={() => setOpen(true)} />}
+      <AddItemModal open={open} onClose={() => setOpen(false)} products={products} newItem={newItem} setNewItem={setNewItem} addItem={addItem} />
+      <MainBottomNavigation value={navValue} onChange={setNavValue} />
+    </Box>
+  )
 
 }
 
