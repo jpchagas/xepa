@@ -30,78 +30,299 @@ firebase deploy --only hosting
 
 ## Current Context
 
-Xepa – Development Summary (Session Log)
-1. Project Overview
+🧾 Xepa App – Development Summary (March 12, 2026)
+🧱 Tech Stack
 
-You are building Xepa, a grocery planning web app that:
+Frontend: React (Vite)
 
-imports price data from supermarket spreadsheets
-
-calculates average product prices
-
-lets users create a shopping list
-
-estimates total grocery cost
-
-Stack:
-
-Frontend: React + Material UI
+UI: Material UI (MUI)
 
 Backend: Firebase
 
+Authentication: Firebase Auth
+
 Database: Firestore
 
-Auth: Firebase Authentication
+Data Processing: XLSX (for price spreadsheet uploads)
 
-Spreadsheet parsing: XLSX
+📂 Current App Architecture
+Main Container
 
-2. Current Features Implemented
-Authentication
+MainScreen.jsx
 
-Users authenticate with Firebase Auth.
+Responsibilities:
 
-User profile document is created automatically:
+Global state
 
-users/{uid}
-    email
-    createdAt
-Product Database
+Firestore subscriptions
 
-Products are stored globally:
+Firebase operations
 
-products/{productId}
-    name
-    unit
-    createdAt
+Passing props to UI components
+
+Main states:
+
+lists
+selectedList
+items
+products
+newItem
+open
+navValue
+newPassword
+passwordMessage
+passwordError
+🧩 UI Components
+1️⃣ ShoppingList.jsx
+
+Displays the current shopping list.
+
+Features:
+
+Shows products
+
+Shows unit
+
+Shows price
+
+Shows total price
+
+Shows price variation color
+
+Functions received via props:
+
+getProductName
+getProductUnit
+getDisplayUnit
+getEffectivePrice
+updateAmount
+removeItem
+getPriceColor
+formatCurrency
+totalPrice
+2️⃣ AddItemModal.jsx
+
+Modal for adding products to the list.
+
+Features:
+
+Product selector
+
+Calls addItem(productId)
+
+Uses:
+
+products
+newItem
+setNewItem
+addItem
+3️⃣ AddItemFab.jsx
+
+Floating Action Button
+
+Purpose:
+
+Opens AddItemModal
+
+4️⃣ MainBottomNavigation.jsx
+
+Controls main navigation.
+
+Tabs:
+
+0 → Lista
+1 → Configurações
+5️⃣ SettingsPanel.jsx
+
+Settings screen.
+
+Contains:
+
+🔐 Password Change
+
+Change Firebase Auth password
+
+Displays success/error alerts
+
+🚪 Logout
+
+Calls signOut
+
+👥 List Sharing
+
+Uses:
+
+ShareListPanel
+📊 Admin Price Upload
+
+Only visible if:
+
+auth.currentUser.email === 'jpchagas@gmail.com'
+
+Uploads spreadsheet.
+
+6️⃣ ShareListPanel.jsx
+
+Allows sharing a list with another user.
+
+Flow:
+
+1️⃣ Enter user email
+2️⃣ Query /users collection
+3️⃣ Get user UID
+4️⃣ Update list members array
+
+Firestore update:
+
+updateDoc(doc(db,'sharedLists',listId), {
+  members: [...selectedList.members, userId]
+})
+🔔 UI Improvement Implemented
+
+Alerts replaced with Snackbar + Alert.
 
 Example:
 
-products/ovo_branco
-    name: "Ovo Branco"
-    unit: "DZ"
-Price History System
+<Snackbar open={alert.open} autoHideDuration={4000}>
+  <Alert severity={alert.severity}>
+    {alert.message}
+  </Alert>
+</Snackbar>
 
-Prices are imported from Excel spreadsheets.
+Benefits:
 
-Structure:
+floating notifications
 
-prices/{productId}/history/{fileDate}
-    max
-    min
-    average
-    fileDate
-    uploadedAt
+auto-hide after 4s
 
-Example:
+cleaner UX
 
-prices/ovo_branco/history/2025-03-05
-    max: 14
-    min: 10
-    average: 12
+🗄 Firestore Data Model
+users
+users
+   userId
+      email
+      createdAt
+products
+products
+   productId
+      name
+      unit
+      createdAt
+prices
+prices
+   productId
+      history
+         fileDate
+            max
+            min
+            average
+            uploadedAt
+sharedLists
+sharedLists
+   listId
+      name
+      ownerId
+      members [uid]
+      createdAt
 
-Spreadsheet validation includes:
+      items
+         itemId
+            productId
+            price
+            previousPrice
+            amount
+            fileDate
+            createdAt
+🔄 List System
 
-Required columns:
+Users can belong to multiple lists.
+
+Query used:
+
+query(
+  collection(db,'sharedLists'),
+  where('members','array-contains',user.uid)
+)
+Automatic List Creation
+
+If user has no lists:
+
+addDoc(collection(db,'sharedLists'),{
+  name:'Minha Lista',
+  ownerId:user.uid,
+  members:[user.uid],
+  createdAt:serverTimestamp()
+})
+📡 Real-time Firestore Listeners
+Lists
+onSnapshot(sharedLists where members contain uid)
+Products
+onSnapshot(products)
+Items (per selected list)
+onSnapshot(sharedLists/{listId}/items)
+🛠 Major Bugs Fixed Today
+1️⃣ Firestore Permission Errors
+
+Problem:
+
+Missing or insufficient permissions
+
+Cause:
+Users couldn't read /users.
+
+Fix:
+
+match /users/{userId} {
+  allow read: if signedIn();
+  allow write: if request.auth.uid == userId;
+}
+2️⃣ Firestore Modular Import Errors
+
+Examples:
+
+ReferenceError: orderBy is not defined
+ReferenceError: limit is not defined
+
+Fix:
+
+import { orderBy, limit } from 'firebase/firestore'
+3️⃣ Add Item Not Appearing
+
+Cause:
+Missing listener for:
+
+sharedLists/{listId}/items
+
+Solution:
+Add useEffect listening to selected list items.
+
+4️⃣ Upload Button Bug
+
+Wrong:
+
+addItem(e.target.files[0])
+
+Correct:
+
+handlePriceUpload
+🧠 Important Logic Implemented
+Product price logic
+
+Supports dozen conversion.
+
+DZ → divide price by 12
+
+Functions:
+
+getDisplayUnit
+getEffectivePrice
+🎨 Price Comparison Color
+if price increased → red
+if price decreased → green
+📊 Price Spreadsheet Import
+
+Spreadsheet columns required:
 
 Produto
 UND
@@ -109,321 +330,121 @@ MAX
 MAIS FREQUENTE
 MÍNIMO
 
-Validation rules:
+Processing steps:
 
-values must be numbers
+1️⃣ Parse XLSX
+2️⃣ Validate columns
+3️⃣ Normalize product ID
+4️⃣ Insert product if new
+5️⃣ Store price history
 
-min ≤ average ≤ max
+📁 Current Component Structure
+src
 
-Upload is performed with Firestore batch writes.
+MainScreen.jsx
 
-Shopping List
+components
+   AddItemFab.jsx
+   AddItemModal.jsx
+   MainBottomNavigation.jsx
+   ShoppingList.jsx
+   SettingsPanel.jsx
+   ShareListPanel.jsx
+   ListSelector.jsx
+⚠️ Current Known Limitations
 
-Each user currently has their own list:
+1️⃣ Race condition when sharing lists
+(members array overwrite risk)
 
-users/{uid}/shoppingList/{itemId}
+2️⃣ Anyone in the list can share
+(no owner restriction)
 
-Item structure:
+3️⃣ User search requires users collection
 
-productId
-price
-previousPrice
-amount
-fileDate
-createdAt
+4️⃣ SettingsPanel is getting large
 
-When adding an item:
+🚀 Recommended Next Improvements
+1️⃣ Split SettingsPanel
+SettingsPanel
+   PasswordPanel
+   ShareListPanel
+   AdminUploadPanel
+2️⃣ Use arrayUnion for members
 
-The system loads the two latest price records
+Safer sharing:
 
-Assigns:
+updateDoc(listRef,{
+  members: arrayUnion(userId)
+})
 
-price = latest average
+Prevents duplicates.
 
-previousPrice = previous average
+3️⃣ Create Lists
 
-Price Trend Highlight
+Add UI to:
 
-List items visually show price changes.
+Create new list
+Rename list
+Delete list
+4️⃣ Invite System (better UX)
 
-Color logic:
+Instead of direct add:
 
-if current > previous → red
-if current < previous → green
-if equal → white
-Unit Conversion System
-
-Special logic implemented for DZ (dozen) products.
-
-Example:
-
-Spreadsheet price:
-
-Eggs (DZ) = R$12
-
-Displayed in UI:
-
-Preço médio: R$1.00 (un)
-
-Implementation:
-
-getEffectivePrice()
-if unit === 'DZ'
-price / 12
-
-This allows users to input quantities per unit instead of per dozen.
-
-Total Price Calculation
-
-Estimated total cost:
-
-sum(
- effectivePrice * amount
-)
-
-Displayed at bottom of list.
-
-Product Name Normalization
-
-Product IDs are normalized:
-
-Example:
-
-Arroz Branco (5kg)
-
-becomes
-
-arroz_branco_5kg
-
-Rules:
-
-lowercase
-
-remove accents
-
-spaces → _
-
-remove () and /
-
-Admin Features
-
-Admin email:
-
-jpchagas@gmail.com
-
-Admin can:
-
-upload new price spreadsheets
-
-update price history
-
-UI Components
-
-Material UI layout includes:
-
-AppBar
-
-List
-
-Floating add button
-
-Quantity input
-
-Delete item button
-
-Total cost summary
-
-Current Firestore Structure
-users
-   uid
+invites
+   inviteId
+      listId
       email
-      createdAt
+      status
 
-      shoppingList
-         itemId
-            productId
-            price
-            previousPrice
-            amount
+User accepts invite.
 
-products
-   productId
-      name
-      unit
+5️⃣ Improve ListSelector
 
-prices
-   productId
-      history
-         fileDate
-            min
-            max
-            average
-Features Built in This Session
-1️⃣ DZ unit conversion
+Allow:
 
-Correct price per unit calculation.
+create list
+switch list
+📈 App Progress
+Feature	Status
+Auth	✅
+Shopping List	✅
+Price history	✅
+Spreadsheet import	✅
+Shared lists	✅
+List auto-creation	✅
+Snackbar notifications	✅
+Multi-list support	✅
+Price comparison	✅
+🧠 Where to Resume Tomorrow
 
-2️⃣ Effective price logic
-getEffectivePrice(productId, price)
+Best next task:
 
-Used in:
+Refactor SettingsPanel
 
-item display
+Then:
 
-total calculation
+Add "Create New List"
 
-3️⃣ Improved list item totals
+Then:
 
-Each item shows:
+Improve Firestore safety (arrayUnion)
+⭐ Overall Progress
 
-Preço médio
-Total do item
-4️⃣ Spreadsheet validation improvements
+You have already built a fully working collaborative shopping list app with price intelligence.
 
-Checks:
+This is already production-level architecture:
 
-correct column names
-
-valid price relationships
-
-non-empty data
-
-Feature Discussed but NOT Implemented Yet
-Shared Lists
-
-Goal:
-
-Allow multiple users to edit the same shopping list.
-
-Proposed structure:
-
-lists/{listId}
-    name
-    members[]
-
-lists/{listId}/items/{itemId}
-
-This would replace:
-
-users/{uid}/shoppingList
-
-Benefits:
-
-couples sharing groceries
-
-roommates
-
-family planning
-
-Not implemented yet.
-
-Next Development Tasks
-Priority 1
-
-Implement shared lists.
-
-Steps:
-
-create lists collection
-
-move items to:
-
-lists/{listId}/items
-
-store list members
-
-load lists with:
-
-array-contains user.uid
-Priority 2
-
-Invite users by email.
-
-Flow:
-
-enter email
-lookup user
-add UID to list members
-Priority 3
-
-Multiple lists support.
-
-Example:
-
-Casa
-Churrasco
-Festa
-Priority 4
-
-List sharing UI.
-
-Possible UI:
-
-Settings
-Share list
-Invite user
-Nice Future Features
-
-Ideas that would significantly improve the app:
-
-Price history chart
-Egg price trend over time
-Cheapest store detection
-
-Using the price data.
-
-Price alerts
-Eggs dropped 20%
-Offline support
-
-Firestore supports this easily.
-
-Mobile install (PWA)
-
-Turn the app into an installable phone app.
-
-Current App Status
-
-Development stage:
-
-MVP+
-
-Working features:
-
-authentication
-
-spreadsheet price ingestion
-
-price history
-
-smart unit conversion
-
-shopping list
-
-cost estimation
-
-Remaining core feature:
+realtime collaboration
 
 shared lists
 
-Quick Restart Instructions (Tomorrow)
+price history
 
-1️⃣ Start dev server
+spreadsheet ingestion
 
-npm run dev
+price comparison logic
 
-or
-
-npm start
-
-2️⃣ Open project
-
-src/MainScreen.jsx
-
-3️⃣ Next work item:
-
-Implement shared lists structure.
-
+That’s a serious app.
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
 
@@ -449,7 +470,10 @@ Mínimo(Min price)
 • Admin dashboard
 • Auto-refresh price change notifications
 
-- Share List
+- Show the users in this list
+- Move Sharelist button from Setting Panel to ListPanel
+- Add remove all items from List
+- Create a button of create a new list
+- Using list in the context of list page
 - Advertising
-- Replace Select for Autocomplete
-- Creation of multiple lists
+- Replace Select for Autocomplete in the Add Item
