@@ -502,10 +502,10 @@ Mínimo(Min price)
 • Admin dashboard
 • Auto-refresh price change notifications
 
-- Show the users in this list
-- Move Sharelist button from Setting Panel to ListPanel
-- Add remove all items from List
-- Create a button of create a new list
 - Using list in the context of list page
 - Advertising
 - Replace Select for Autocomplete in the Add Item
+
+- Leave list button
+- Remove member
+- Better mobile UX

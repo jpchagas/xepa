@@ -5,7 +5,8 @@ function ListControls({
   members,
   onCreateList,
   onClearItems,
-  onShareClick
+  onShareClick,
+  onDeleteList
 }) {
 
   if (!selectedList) return null
@@ -13,17 +14,46 @@ function ListControls({
   return (
     <Box sx={{ mb: 2 }}>
 
-      <Typography variant="subtitle1">
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
         Lista: {selectedList.name}
       </Typography>
 
-      <Stack direction="row" spacing={1} sx={{ mb: 2, mt: 1 }}>
-        {members.map(member => (
-          <Chip key={member.id} label={member.email} size="small" />
-        ))}
+      {/* Members */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ mb: 2 }}
+        flexWrap="wrap"
+      >
+        {members.map(member => {
+
+          const isOwner = member.id === selectedList.ownerId
+
+          return (
+            <Chip
+              key={member.id}
+              label={isOwner ? `👑 ${member.email}` : member.email}
+              size="small"
+              color={isOwner ? "primary" : "default"}
+              variant={isOwner ? "filled" : "outlined"}
+            />
+          )
+        })}
+
+        {/* Invite Chip */}
+        <Chip
+          label="+ Convidar"
+          size="small"
+          variant="outlined"
+          onClick={onShareClick}
+          sx={{ cursor: 'pointer' }}
+        />
+
       </Stack>
 
-      <Stack direction="row" spacing={1}>
+      {/* Controls */}
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+
         <Button
           variant="contained"
           onClick={onCreateList}
@@ -41,10 +71,12 @@ function ListControls({
 
         <Button
           variant="outlined"
-          onClick={onShareClick}
+          color="error"
+          onClick={onDeleteList}
         >
-          Compartilhar
+          Excluir Lista
         </Button>
+
       </Stack>
 
     </Box>

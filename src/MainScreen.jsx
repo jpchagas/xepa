@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, Container, AppBar, Toolbar, Typography, Alert, Snackbar } from '@mui/material'
+import { Box, Container, AppBar, Toolbar, Typography, Alert, Snackbar,Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button} from '@mui/material'
 import { auth, db } from './firebase'
 import { updatePassword, signOut } from 'firebase/auth'
 import {
@@ -16,7 +16,8 @@ import {
   serverTimestamp,
   orderBy,
   limit,
-  writeBatch
+  writeBatch,
+  arrayUnion
 } from 'firebase/firestore'
 
 import * as XLSX from 'xlsx'
@@ -28,7 +29,7 @@ import ShoppingList from './ShoppingList'
 import SettingsPanel from './SettingsPanel'
 import ListSelector from './ListSelector'
 import ListControls from './ListControls'
-import ShareListPanel from './ShareListPanel'
+
 
 function MainScreen() {
   const [lists, setLists] = useState([])
@@ -47,6 +48,10 @@ function MainScreen() {
   message: ''
   })
   const [members,setMembers] = useState([])
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [newListName, setNewListName] = useState('')
+  const [shareEmail, setShareEmail] = useState('')
 
   const isAdmin = auth.currentUser?.email === 'jpchagas@gmail.com'
 
@@ -85,8 +90,17 @@ function MainScreen() {
 
       setLists(fetchedLists)
 
-      // Always select first list if none selected
-      setSelectedList(prev => prev || fetchedLists[0])
+      setSelectedList(prev => {
+
+        // nothing selected yet
+        if (!prev) return fetchedLists[0] || null
+
+        // check if previous list still exists
+        const stillExists = fetchedLists.find(l => l.id === prev.id)
+
+        // keep it if it exists, otherwise select first
+        return stillExists || fetchedLists[0] || null
+      })
     })
 
     // PRODUCTS
@@ -103,18 +117,21 @@ function MainScreen() {
 
   /** Load items for selected list */
   useEffect(() => {
-    if (!selectedList) {
-      setItems([])
-      return
-    }
 
-    const unsubscribeItems = onSnapshot(
-      collection(db, 'sharedLists', selectedList.id, 'items'),
-      snapshot => setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
-    )
+  if (!selectedList?.id) {
+    setItems([])
+    return
+  }
 
-    return () => unsubscribeItems()
-  }, [selectedList])
+  const itemsRef = collection(db,'sharedLists',selectedList.id,'items')
+
+  const unsubscribe = onSnapshot(itemsRef, snapshot =>
+    setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+  )
+
+  return () => unsubscribe()
+
+}, [selectedList])
 
   useEffect(()=>{
   const loadMembers = async () => {
@@ -148,17 +165,71 @@ function MainScreen() {
   }
 
   const createList = async () => {
-  const user = auth.currentUser
-  if (!user) return
 
-  const newListRef = await addDoc(collection(db,'sharedLists'),{
-    name: 'Nova Lista',
+  const user = auth.currentUser
+  if (!user || !newListName) return
+
+  await addDoc(collection(db,'sharedLists'),{
+    name: newListName,
     ownerId: user.uid,
     members: [user.uid],
     createdAt: serverTimestamp()
   })
 
-  showAlert('success','Nova lista criada!')
+  setNewListName('')
+  setCreateDialogOpen(false)
+
+  showAlert('success','Lista criada com sucesso!')
+}
+
+const shareList = async () => {
+
+  if (!shareEmail || !selectedList) return
+
+  const userQuery = query(
+    collection(db,'users'),
+    where('email','==',shareEmail)
+  )
+
+  const userSnap = await getDocs(userQuery)
+
+  if(userSnap.empty){
+    showAlert('error','Usuário não encontrado')
+    return
+  }
+
+  const userId = userSnap.docs[0].id
+
+  if(selectedList.members.includes(userId)){
+    showAlert('warning','Usuário já possui acesso')
+    return
+  }
+
+  const listRef = doc(db,'sharedLists',selectedList.id)
+
+  await updateDoc(listRef,{
+    members: arrayUnion(userId)
+  })
+
+  setShareEmail('')
+  setShareDialogOpen(false)
+
+  showAlert('success','Lista compartilhada!')
+}
+
+const deleteList = async () => {
+
+  if (!selectedList) return
+
+  const deletedId = selectedList.id
+
+  await deleteDoc(doc(db,'sharedLists',deletedId))
+
+  const remaining = lists.filter(l => l.id !== deletedId)
+
+  setSelectedList(remaining[0] || null)
+
+  showAlert('success','Lista removida')
 }
 
   const clearItems = async () => {
@@ -403,12 +474,10 @@ function MainScreen() {
             <ListControls
               selectedList={selectedList}
               members={members}
-              onCreateList={createList}
+              onCreateList={() => setCreateDialogOpen(true)}
               onClearItems={clearItems}
-            />
-
-            <ShareListPanel
-            selectedList={selectedList}
+              onShareClick={() => setShareDialogOpen(true)}
+              onDeleteList={deleteList}
             />
 
             <ShoppingList
@@ -454,7 +523,52 @@ function MainScreen() {
           addItem={addItem}
         />
       )}
+      <Dialog open={createDialogOpen} onClose={()=>setCreateDialogOpen(false)}>
+        <DialogTitle>Nova Lista</DialogTitle>
 
+        <DialogContent>
+          <TextField
+            label="Nome da Lista"
+            value={newListName}
+            onChange={(e)=>setNewListName(e.target.value)}
+            fullWidth
+            sx={{mt:1}}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={()=>setCreateDialogOpen(false)}>
+            Cancelar
+          </Button>
+
+          <Button variant="contained" onClick={createList}>
+            Criar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={shareDialogOpen} onClose={()=>setShareDialogOpen(false)}>
+        <DialogTitle>Compartilhar Lista</DialogTitle>
+
+        <DialogContent>
+          <TextField
+            label="Email do usuário"
+            value={shareEmail}
+            onChange={(e)=>setShareEmail(e.target.value)}
+            fullWidth
+            sx={{mt:1}}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={()=>setShareDialogOpen(false)}>
+            Cancelar
+          </Button>
+
+          <Button variant="contained" onClick={shareList}>
+            Compartilhar
+          </Button>
+        </DialogActions>
+      </Dialog>
       <MainBottomNavigation value={navValue} onChange={setNavValue} />
       <Snackbar
         open={alert.open}
