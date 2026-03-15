@@ -27,6 +27,8 @@ import AddItemModal from './AddItemModal'
 import ShoppingList from './ShoppingList'
 import SettingsPanel from './SettingsPanel'
 import ListSelector from './ListSelector'
+import ListControls from './ListControls'
+import ShareListPanel from './ShareListPanel'
 
 function MainScreen() {
   const [lists, setLists] = useState([])
@@ -44,6 +46,7 @@ function MainScreen() {
   severity: 'success',
   message: ''
   })
+  const [members,setMembers] = useState([])
 
   const isAdmin = auth.currentUser?.email === 'jpchagas@gmail.com'
 
@@ -113,6 +116,27 @@ function MainScreen() {
     return () => unsubscribeItems()
   }, [selectedList])
 
+  useEffect(()=>{
+  const loadMembers = async () => {
+
+    if(!selectedList) return
+
+    const users = []
+
+    for(const uid of selectedList.members){
+      const snap = await getDoc(doc(db,'users',uid))
+      if(snap.exists()){
+        users.push({ id: uid, ...snap.data() })
+      }
+    }
+
+    setMembers(users)
+  }
+
+  loadMembers()
+
+},[selectedList])
+
   /** Helper functions */
 
   const showAlert = (severity, message) => {
@@ -122,6 +146,38 @@ function MainScreen() {
       message
     })
   }
+
+  const createList = async () => {
+  const user = auth.currentUser
+  if (!user) return
+
+  const newListRef = await addDoc(collection(db,'sharedLists'),{
+    name: 'Nova Lista',
+    ownerId: user.uid,
+    members: [user.uid],
+    createdAt: serverTimestamp()
+  })
+
+  showAlert('success','Nova lista criada!')
+}
+
+  const clearItems = async () => {
+  if (!selectedList) return
+
+  const snapshot = await getDocs(
+    collection(db,'sharedLists',selectedList.id,'items')
+  )
+
+  const batch = writeBatch(db)
+
+  snapshot.forEach(docSnap=>{
+    batch.delete(docSnap.ref)
+  })
+
+  await batch.commit()
+
+  showAlert('success','Itens removidos da lista')
+}
 
   const formatCurrency = (value) =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -342,6 +398,17 @@ function MainScreen() {
               lists={lists}
               selectedList={selectedList}
               setSelectedList={setSelectedList}
+            />
+
+            <ListControls
+              selectedList={selectedList}
+              members={members}
+              onCreateList={createList}
+              onClearItems={clearItems}
+            />
+
+            <ShareListPanel
+            selectedList={selectedList}
             />
 
             <ShoppingList
