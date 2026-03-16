@@ -30,20 +30,39 @@ firebase deploy --only hosting
 
 ## Current Context
 
-🧾 Xepa App – Development Summary
+🧾 Xepa App – Development Summary (Updated)
 
-Date: March 12, 2026
-Status: Stable build with working price importer + improved UX
+Date: March 15, 2026
+Status: Stable collaborative shopping list with price intelligence
+
+Current maturity:
+
+MVP v0.9
+
+Major updates since last summary:
+
+Shared lists with members
+
+Member management (remove / leave)
+
+User collection integration
+
+Product search using Material UI Autocomplete
+
+Firestore permission fixes
+
+Avatar initials for members
+
+Improved error diagnostics
 
 🧱 Tech Stack
-
 Frontend
 
 React (Vite)
 
 UI Framework
 
-Material UI
+Material UI (MUI)
 
 Backend
 
@@ -76,14 +95,18 @@ Firebase operations
 
 Spreadsheet processing
 
+List sharing logic
+
+Member management
+
 Passing props to UI components
 
-Main state variables:
-
+Main State Variables
 lists
 selectedList
 items
 products
+members
 newItem
 open
 navValue
@@ -91,8 +114,12 @@ newPassword
 passwordMessage
 passwordError
 alert
+createDialogOpen
+shareDialogOpen
+newListName
+shareEmail
 
-alert was added today to support Snackbar notifications.
+members state loads user data for list participants.
 
 📂 Component Structure
 src
@@ -105,14 +132,69 @@ components
    MainBottomNavigation.jsx
    ShoppingList.jsx
    SettingsPanel.jsx
-   ShareListPanel.jsx
    ListSelector.jsx
+   ListControls.jsx
+Component Responsibilities
+
+ListSelector
+
+Handles switching between shopping lists.
+
+ListControls
+
+Handles list actions:
+
+create list
+
+delete list
+
+clear items
+
+share list
+
+remove member
+
+leave list
+
+show member avatars
+
+AddItemModal
+
+Product search + add item modal.
+
+Now uses Material UI Autocomplete instead of Select.
+
+ShoppingList
+
+Displays shopping items and handles:
+
+quantity
+
+remove item
+
+price display
+
+price comparison
+
+SettingsPanel
+
+Contains:
+
+password change
+
+logout
+
+admin spreadsheet upload
+
 🔄 Firestore Data Model
 users
 users
    userId
       email
       createdAt
+
+Document ID = Firebase Auth UID.
+
 products
 products
    productId
@@ -160,20 +242,23 @@ sharedLists
             createdAt
 🔁 Real-Time Firestore Listeners
 Lists
+
+Query:
+
 sharedLists
 where members array-contains user.uid
 
-Used for collaborative lists.
+Used for collaborative list access.
 
 Products
 onSnapshot(products)
 
-Loads product catalog.
+Loads the product catalog used for item selection.
 
 Items
 sharedLists/{listId}/items
 
-Updates automatically when items change.
+Realtime updates when items are added/modified.
 
 🧠 Shopping List Logic
 
@@ -186,7 +271,7 @@ Process:
 1 Query latest price history
 2 Get newest fileDate
 3 Get previous price
-4 Insert item in sharedLists/{listId}/items
+4 Insert item in list
 
 Stored fields:
 
@@ -238,22 +323,16 @@ Converted to:
 
 2026-03-12
 
-Used as fileDate.
+Stored as fileDate.
 
 🔧 Price Import Logic
-
-Important functions.
-
-Product ID normalization
+Product ID Normalization
 normalizeProductId(name)
 
-Converts:
+Example:
 
 Tomate (Italiano)
-
-to:
-
-tomate_italiano
+→ tomate_italiano
 
 Removes:
 
@@ -267,27 +346,25 @@ slashes
 
 Prevents duplicate products.
 
-Batch write system
+Batch Write System
 writeBatch(db)
-
-All updates committed together.
 
 Benefits:
 
-faster writes
+atomic writes
 
-atomic operation
+faster uploads
 
-fewer Firestore requests
+fewer Firestore operations
 
-🎨 UI Improvements Implemented
+🎨 UI Improvements
 Snackbar Alerts
 
-Replaced all blocking:
+Replaced blocking alerts with:
 
-alert()
+Material UI
 
-with Material UI Snackbar + Alert.
+Snackbar + Alert
 
 Supported severities:
 
@@ -301,23 +378,37 @@ Examples:
 🟡 Colunas faltando
 🟢 143 produtos atualizados
 🔴 Erro ao processar planilha
+Product Search (NEW)
 
-Alert state added to MainScreen.
+AddItemModal now uses:
 
-🧩 Settings Panel Features
-Password Change
+Material UI Autocomplete
 
-Uses:
+Advantages:
 
-updatePassword(auth.currentUser)
+search by typing
 
-Shows success/error alerts.
+scalable to thousands of products
 
-Logout
-signOut(auth)
-List Sharing
+faster UX
 
-Handled by ShareListPanel.
+better mobile usability
+
+Member Avatars (NEW)
+
+List members now display as:
+
+Avatar with initials
+
+Example:
+
+JP
+MS
+
+Derived from user email or name.
+
+👥 List Collaboration System
+Sharing Lists
 
 Flow:
 
@@ -327,22 +418,55 @@ Query users collection
 ↓
 Get userId
 ↓
-Add to members array
+Add userId to members array
 
 Firestore update:
 
 sharedLists/{listId}.members
-Admin Price Upload
-
-New upload system implemented.
 
 Uses:
 
-handlePriceUpload(event)
+arrayUnion(userId)
 
-Spreadsheet parsing via SheetJS (XLSX).
+to prevent overwrites.
 
-🛠 Bugs Fixed Today
+Member Management
+
+Supported actions:
+
+Owner can:
+
+removeMember(userId)
+
+Members can:
+
+leaveList()
+🔐 Firestore Security Rules
+
+Main protections:
+
+Users
+users/{userId}
+
+read  → any signed-in user
+write → only the owner
+Shared Lists
+create → signed in users
+read   → only members
+update → only members
+delete → only members
+List Items
+sharedLists/{listId}/items
+
+Allowed only if user is in parent list members.
+
+Products & Prices
+
+Currently readable by any signed-in user.
+
+Admin writes used for spreadsheet importer.
+
+🛠 Bugs Fixed Recently
 1️⃣ File Upload Error
 
 Error:
@@ -351,108 +475,104 @@ TypeError: n.indexOf is not a function
 
 Cause:
 
-file input → addItem(file)
+File input incorrectly calling addItem.
 
 Fix:
 
-file input → handlePriceUpload(event)
+handlePriceUpload(event)
 2️⃣ Missing Prop Error
 
 Error:
 
 handlePriceUpload is not defined
 
+Fix:
+
+Prop passed to SettingsPanel.
+
+3️⃣ Firestore Permission Errors
+
 Cause:
 
-SettingsPanel was not receiving the prop.
+User not present in list members.
 
 Fix:
 
-function SettingsPanel({... , handlePriceUpload})
-3️⃣ Missing Imports
+Ensured correct UID membership.
 
-Added:
+4️⃣ Items Security Rule Edge Case
 
-getDoc
-writeBatch
-XLSX
+Added parent document existence check.
+
 ⚠️ Known Limitations
-1️⃣ Share List Race Condition
+1️⃣ List Ownership Permissions
 
-Current code:
+Currently any member can:
 
-members: [...selectedList.members, userId]
+delete list
+remove members
+share list
 
-Should become:
+Future improvement:
 
-arrayUnion(userId)
+only ownerId can manage members
+2️⃣ Importer Performance
 
-To prevent overwrite.
-
-2️⃣ Anyone Can Share Lists
-
-No owner restriction yet.
-
-Possible improvement:
-
-only ownerId can share
-3️⃣ Upload Reads Products One by One
-
-Current code:
+Current importer:
 
 await getDoc(productRef)
 
-Inside loop.
+inside loop.
 
-Works but slower for large files.
+Optimization possible by:
 
-Future optimization possible.
+loading all products once
+3️⃣ SettingsPanel Growing Large
 
-🚀 Next Recommended Development Tasks
-
-Priority order.
-
-🥇 List Management
-
-Currently lists are auto-created.
-
-Add UI for:
-
-Create list
-Rename list
-Delete list
-
-Component candidate:
-
-ListSelector
-🥈 Firestore Safety
-
-Use:
-
-arrayUnion(userId)
-
-When sharing lists.
-
-🥉 Refactor SettingsPanel
-
-Current component getting large.
-
-Split into:
+Future refactor:
 
 SettingsPanel
    PasswordPanel
-   ShareListPanel
+   SharePanel
    AdminUploadPanel
-🏅 Performance Improvement
+🚀 Recommended Next Development Tasks
+🥇 Owner Permissions
 
-Optimize importer:
+Restrict:
 
-load all products once
-instead of getDoc per row
+share list
+remove members
+delete list
 
-Speeds up large uploads.
+to ownerId.
 
-⭐ Current Product State
+🥈 Product Import Optimization
+
+Load product catalog once.
+
+Avoid per-row getDoc.
+
+🥉 Product Search UX
+
+Improve Autocomplete:
+
+auto focus
+
+press ENTER to add item
+
+instant add without button
+
+🏅 Mobile UX
+
+Improve:
+
+item editing
+
+keyboard shortcuts
+
+faster adding flow
+
+⭐ Current Feature Status
 Feature	Status
 Authentication	✅
 Shopping list	✅
@@ -461,22 +581,20 @@ Price history	✅
 Spreadsheet import	✅
 Price comparison	✅
 Collaborative lists	✅
+Member management	✅
 Snackbar notifications	✅
-📈 Development Stage
-
-The project is now a functional collaborative shopping platform with price intelligence.
-
-Current maturity:
-
+Product search autocomplete	✅
+📈 Project Stage
 Prototype        ✅
 Functional App   ✅
 Collaboration    ✅
 Price Data       ✅
 Admin Tools      ✅
+Multi-user Lists ✅
 
-Estimated stage:
+Current stage:
 
-MVP v0.8
+MVP v0.9
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
 
