@@ -17,7 +17,8 @@ import {
   orderBy,
   limit,
   writeBatch,
-  arrayUnion
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore'
 
 import * as XLSX from 'xlsx'
@@ -106,7 +107,15 @@ function MainScreen() {
     // PRODUCTS
     const unsubscribeProducts = onSnapshot(
       collection(db, 'products'),
-      snapshot => setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      snapshot => {
+        setProducts(snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })))
+      },
+      error => {
+        console.error('Products listener error:', error)
+      }
     )
 
     return () => {
@@ -180,6 +189,34 @@ function MainScreen() {
   setCreateDialogOpen(false)
 
   showAlert('success','Lista criada com sucesso!')
+}
+
+const removeMember = async (userId) => {
+
+  if (!selectedList) return
+
+  const listRef = doc(db,'sharedLists',selectedList.id)
+
+  await updateDoc(listRef,{
+    members: arrayRemove(userId)
+  })
+
+  showAlert('success','Membro removido')
+}
+
+const leaveList = async () => {
+
+  const user = auth.currentUser
+
+  if (!selectedList || !user) return
+
+  const listRef = doc(db,'sharedLists',selectedList.id)
+
+  await updateDoc(listRef,{
+    members: arrayRemove(user.uid)
+  })
+
+  showAlert('success','Você saiu da lista')
 }
 
 const shareList = async () => {
@@ -478,6 +515,9 @@ const deleteList = async () => {
               onClearItems={clearItems}
               onShareClick={() => setShareDialogOpen(true)}
               onDeleteList={deleteList}
+              onRemoveMember={removeMember}
+              onLeaveList={leaveList}
+              currentUserId={auth.currentUser?.uid}
             />
 
             <ShoppingList

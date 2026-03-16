@@ -10,7 +10,8 @@ import {
   CircularProgress,
 } from '@mui/material'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { auth } from './firebase'
+import { auth,db } from './firebase'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 function Register() {
   const [email, setEmail] = useState('')
@@ -21,19 +22,37 @@ function Register() {
   const navigate = useNavigate()
 
   const handleRegister = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+  e.preventDefault()
+  setError('')
+  setLoading(true)
 
-    try {
-      await createUserWithEmailAndPassword(auth, email, password)
-      navigate('/main')
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+  try {
+
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    )
+
+    const user = userCredential.user
+
+    // create user document in Firestore
+    await setDoc(doc(db,'users',user.uid),{
+      email: user.email,
+      createdAt: serverTimestamp()
+    })
+
+    await user.reload() // ensure auth state sync
+
+
+    navigate('/main')
+
+  } catch (err) {
+    setError(err.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
