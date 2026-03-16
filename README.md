@@ -502,10 +502,7 @@ Mínimo(Min price)
 • Admin dashboard
 • Auto-refresh price change notifications
 
-- Using list in the context of list page
 - Advertising
 - Replace Select for Autocomplete in the Add Item
 
-- Leave list button
-- Remove member
 - Better mobile UX
