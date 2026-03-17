@@ -32,12 +32,12 @@ firebase deploy --only hosting
 
 🧾 Xepa App – Development Summary (Updated)
 
-Date: March 15, 2026
-Status: Stable collaborative shopping list with price intelligence
+Date: March 16, 2026
+Status: Stable collaborative shopping list with price intelligence + monetization foundations
 
 Current maturity:
 
-MVP v0.9
+MVP v0.95
 
 Major updates since last summary:
 
@@ -54,6 +54,20 @@ Firestore permission fixes
 Avatar initials for members
 
 Improved error diagnostics
+
+Google AdSense integration (AdBanner component)
+
+Privacy Policy page added
+
+Contact page added
+
+Mobile-style navigation with animated transitions
+
+Back navigation UI for legal pages
+
+AdSense React StrictMode compatibility fix
+
+Improved mobile UX for settings navigation
 
 🧱 Tech Stack
 Frontend
@@ -80,7 +94,16 @@ Spreadsheet Parsing
 
 SheetJS (XLSX)
 
+Ads / Monetization
+
+Google AdSense
+
+Animations
+
+Framer Motion
+
 🧠 Main Application Architecture
+
 Main Container
 
 MainScreen.jsx
@@ -100,6 +123,10 @@ List sharing logic
 Member management
 
 Passing props to UI components
+
+Ad rendering
+
+Mobile navigation control
 
 Main State Variables
 lists
@@ -134,8 +161,12 @@ components
    SettingsPanel.jsx
    ListSelector.jsx
    ListControls.jsx
-Component Responsibilities
+   AdBanner.jsx
 
+pages
+   PrivacyPolicy.jsx
+   Contact.jsx
+Component Responsibilities
 ListSelector
 
 Handles switching between shopping lists.
@@ -162,15 +193,27 @@ AddItemModal
 
 Product search + add item modal.
 
-Now uses Material UI Autocomplete instead of Select.
+Uses:
+
+Material UI Autocomplete
+
+Advantages:
+
+search by typing
+
+scalable to thousands of products
+
+faster UX
+
+better mobile usability
 
 ShoppingList
 
 Displays shopping items and handles:
 
-quantity
+quantity editing
 
-remove item
+item removal
 
 price display
 
@@ -186,61 +229,77 @@ logout
 
 admin spreadsheet upload
 
-🔄 Firestore Data Model
-users
-users
-   userId
-      email
-      createdAt
+privacy policy navigation
 
-Document ID = Firebase Auth UID.
+contact page navigation
 
-products
-products
-   productId
-      name
-      unit
-      createdAt
+Navigation uses React Router navigate() for SPA navigation.
 
-Product IDs are normalized.
+AdBanner (NEW)
 
-Example:
+Reusable ad component responsible for rendering Google AdSense units.
 
-Tomate Italiano → tomate_italiano
-prices
-prices
-   productId
-      history
-         fileDate
-            max
-            min
-            average
-            fileDate
-            uploadedAt
+Features:
 
-Example:
+Safe initialization using useEffect
 
-prices
-   tomate
-      history
-         2026-03-12
-sharedLists
-sharedLists
-   listId
-      name
-      ownerId
-      members [uid]
-      createdAt
+React StrictMode compatibility
 
-      items
-         itemId
-            productId
-            price
-            previousPrice
-            amount
-            fileDate
-            createdAt
-🔁 Real-Time Firestore Listeners
+Prevents duplicate adsbygoogle.push() calls
+
+Mobile-friendly responsive banner
+
+Example structure:
+
+<ins class="adsbygoogle">
+
+Used inside:
+
+MainScreen.jsx
+
+Displayed under shopping list content.
+
+PrivacyPolicy (NEW)
+
+Legal page containing:
+
+data collection explanation
+
+Google AdSense disclosure
+
+cookie policy
+
+developer contact information
+
+UI features:
+
+Material UI layout
+
+mobile AppBar
+
+back button navigation
+
+slide animation transitions
+
+Contact Page (NEW)
+
+Contains:
+
+developer contact information
+
+support message
+
+email address
+
+Also includes:
+
+AppBar
+
+back button
+
+animated transitions
+
+🔄 Real-Time Firestore Listeners
 Lists
 
 Query:
@@ -258,29 +317,37 @@ Loads the product catalog used for item selection.
 Items
 sharedLists/{listId}/items
 
-Realtime updates when items are added/modified.
+Realtime updates when items are added or modified.
 
-🧠 Shopping List Logic
+🔄 Navigation System (NEW)
 
-When a product is added:
+App navigation handled with:
 
-addItem(productId)
+React Router
 
-Process:
+Main routes:
 
-1 Query latest price history
-2 Get newest fileDate
-3 Get previous price
-4 Insert item in list
+/login
+/register
+/forgot-password
+/main
+/privacy
+/contact
 
-Stored fields:
+Animated transitions implemented with:
 
-productId
-price
-previousPrice
-amount
-fileDate
-createdAt
+Framer Motion
+
+Features:
+
+slide transition between pages
+
+mobile-style navigation
+
+back arrow support
+
+SPA navigation without reload
+
 📊 Price Spreadsheet Import System
 
 Admin-only feature.
@@ -288,31 +355,37 @@ Admin-only feature.
 Visible when:
 
 auth.currentUser.email === 'jpchagas@gmail.com'
+
 Upload Flow
+
 Admin selects XLSX
-      ↓
+↓
 handlePriceUpload(event)
-      ↓
+↓
 Extract date from filename
-      ↓
+↓
 Parse spreadsheet
-      ↓
+↓
 Validate columns
-      ↓
+↓
 Normalize product IDs
-      ↓
+↓
 Create missing products
-      ↓
+↓
 Store price history
-      ↓
+↓
 Batch commit
+
 Required Spreadsheet Columns
+
 Produto
 UND
 MAX
 MAIS FREQUENTE
 MÍNIMO
+
 File Name Format
+
 Cotação DD_MM_AAAA.xlsx
 
 Example:
@@ -364,6 +437,8 @@ Replaced blocking alerts with:
 
 Material UI
 
+Components:
+
 Snackbar + Alert
 
 Supported severities:
@@ -378,25 +453,23 @@ Examples:
 🟡 Colunas faltando
 🟢 143 produtos atualizados
 🔴 Erro ao processar planilha
-Product Search (NEW)
+Product Search
 
-AddItemModal now uses:
+Uses:
 
 Material UI Autocomplete
 
 Advantages:
 
-search by typing
+fast typing search
 
-scalable to thousands of products
+scalable
 
-faster UX
+better mobile UX
 
-better mobile usability
+Member Avatars
 
-Member Avatars (NEW)
-
-List members now display as:
+List members display as:
 
 Avatar with initials
 
@@ -407,64 +480,53 @@ MS
 
 Derived from user email or name.
 
-👥 List Collaboration System
-Sharing Lists
+Mobile Navigation UX (NEW)
 
-Flow:
+Settings → Privacy / Contact pages now behave like mobile app screens:
 
-Enter user email
+Features:
+
+AppBar header
+
+back button navigation
+
+slide page transitions
+
+smooth route animations
+
+💰 Monetization (NEW)
+
+Initial ad integration completed.
+
+Using:
+
+Google AdSense
+
+Implementation:
+
+AdBanner.jsx
+
+Features:
+
+responsive banner ads
+
+safe React integration
+
+development-mode compatibility
+
+Current placement:
+
+ShoppingList
 ↓
-Query users collection
-↓
-Get userId
-↓
-Add userId to members array
+AdBanner
 
-Firestore update:
+Future improvements:
 
-sharedLists/{listId}.members
+sticky bottom ads
 
-Uses:
+anchor ads
 
-arrayUnion(userId)
-
-to prevent overwrites.
-
-Member Management
-
-Supported actions:
-
-Owner can:
-
-removeMember(userId)
-
-Members can:
-
-leaveList()
-🔐 Firestore Security Rules
-
-Main protections:
-
-Users
-users/{userId}
-
-read  → any signed-in user
-write → only the owner
-Shared Lists
-create → signed in users
-read   → only members
-update → only members
-delete → only members
-List Items
-sharedLists/{listId}/items
-
-Allowed only if user is in parent list members.
-
-Products & Prices
-
-Currently readable by any signed-in user.
-
-Admin writes used for spreadsheet importer.
+AdSense Auto Ads
 
 🛠 Bugs Fixed Recently
 1️⃣ File Upload Error
@@ -504,18 +566,36 @@ Ensured correct UID membership.
 
 Added parent document existence check.
 
+5️⃣ AdSense Duplicate Push Error (NEW)
+
+Error:
+
+adsbygoogle.push() error
+All 'ins' elements already have ads
+
+Cause:
+
+React StrictMode double effect execution.
+
+Fix:
+
+Prevent duplicate push using DOM status check.
+
 ⚠️ Known Limitations
 1️⃣ List Ownership Permissions
 
 Currently any member can:
 
 delete list
+
 remove members
+
 share list
 
 Future improvement:
 
-only ownerId can manage members
+Only ownerId should manage members.
+
 2️⃣ Importer Performance
 
 Current importer:
@@ -526,14 +606,17 @@ inside loop.
 
 Optimization possible by:
 
-loading all products once
+loading products once
+
+caching product map
+
 3️⃣ SettingsPanel Growing Large
 
 Future refactor:
 
 SettingsPanel
    PasswordPanel
-   SharePanel
+   PrivacyPanel
    AdminUploadPanel
 🚀 Recommended Next Development Tasks
 🥇 Owner Permissions
@@ -541,7 +624,9 @@ SettingsPanel
 Restrict:
 
 share list
+
 remove members
+
 delete list
 
 to ownerId.
@@ -556,7 +641,7 @@ Avoid per-row getDoc.
 
 Improve Autocomplete:
 
-auto focus
+autofocus input
 
 press ENTER to add item
 
@@ -572,6 +657,18 @@ keyboard shortcuts
 
 faster adding flow
 
+💰 Monetization Improvements
+
+Future steps:
+
+sticky bottom ads
+
+AdSense Auto Ads
+
+anchor ads
+
+improved ad viewability
+
 ⭐ Current Feature Status
 Feature	Status
 Authentication	✅
@@ -584,6 +681,10 @@ Collaborative lists	✅
 Member management	✅
 Snackbar notifications	✅
 Product search autocomplete	✅
+Privacy policy	✅
+Contact page	✅
+AdSense integration	✅
+Mobile page transitions	✅
 📈 Project Stage
 Prototype        ✅
 Functional App   ✅
@@ -591,10 +692,11 @@ Collaboration    ✅
 Price Data       ✅
 Admin Tools      ✅
 Multi-user Lists ✅
+Monetization     ✅ (initial)
 
 Current stage:
 
-MVP v0.9
+MVP v0.95
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
 
