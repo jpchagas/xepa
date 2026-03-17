@@ -30,6 +30,7 @@ import ShoppingList from './ShoppingList'
 import SettingsPanel from './SettingsPanel'
 import ListSelector from './ListSelector'
 import ListControls from './ListControls'
+import AdBanner from "./components/AdBanner";
 
 
 function MainScreen() {
@@ -534,7 +535,7 @@ const deleteList = async () => {
             />
           </>
         )}
-
+        
         {navValue === 1 && (
           <SettingsPanel
             newPassword={newPassword}
@@ -550,6 +551,7 @@ const deleteList = async () => {
             handlePriceUpload={handlePriceUpload}
           />
         )}
+        <AdBanner />
       </Container>
 
       {navValue === 0 && <AddItemFab onClick={() => setOpen(true)} />}

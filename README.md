@@ -621,6 +621,12 @@ Mínimo(Min price)
 • Auto-refresh price change notifications
 
 - Advertising
-- Replace Select for Autocomplete in the Add Item
 
 - Better mobile UX
+
+1️⃣ How to reduce Firestore costs by 90%
+2️⃣ How to make your importer 20x faster
+3️⃣ How to transform Xepa into a real startup product
+
+- Auto Ads from AdSense
+- safer AdSense integration for React PWAs that prevents all future adsbygoogle errors and memory leaks.
