@@ -32,644 +32,224 @@ firebase deploy --only hosting
 
 🧾 Xepa App – Development Summary (Updated)
 
-Date: March 16, 2026
-Status: Stable collaborative shopping list with price intelligence + monetization foundations
+Date: March 17, 2026
+Status: Stable collaborative shopping list with price intelligence + branded UI system + polished entry experience
 
-Current maturity:
+🚀 Current Maturity
+👉 MVP v1.1 (Branded UX + Transition System)
+Evolution:
 
-MVP v0.95
+v1.0 → functional + branded
 
-Major updates since last summary:
+v1.1 → branded + experience-driven
 
-Shared lists with members
+🔥 Major Updates Since Last Version
+🎬 NEW — Splash → Login Transition System
+✅ Splash Screen Enhancements
 
-Member management (remove / leave)
+Logo-only layout (removed text)
 
-User collection integration
+Increased logo size (visual dominance)
 
-Product search using Material UI Autocomplete
+Added pulse animation (subtle life/feedback)
 
-Firestore permission fixes
+Implemented:
 
-Avatar initials for members
+fade-out
 
-Improved error diagnostics
+zoom-out transition before navigation
 
-Google AdSense integration (AdBanner component)
+✅ Login Screen Enhancements
 
-Privacy Policy page added
+Added entry animation:
 
-Contact page added
+fade-in
 
-Mobile-style navigation with animated transitions
+slight upward motion (translateY)
 
-Back navigation UI for legal pages
+Synced timing with splash exit
 
-AdSense React StrictMode compatibility fix
+🔗 Cross-Screen Continuity (NEW)
 
-Improved mobile UX for settings navigation
+Logo appears in both:
 
-🧱 Tech Stack
+Splash (large)
+
+Login (smaller)
+
+👉 Creates visual continuity between screens
+
+🎯 Result
+
+Instead of:
+
+hard page switch
+
+User experiences:
+
+smooth screen transition (native-app feel)
+
+🧠 NEW — Motion System (Micro-Interactions Layer)
+
+You now have a consistent animation language:
+
+Interaction	Behavior
+Splash	Pulse + fade/zoom out
+Screen entry	Fade + rise
+FAB	Hover gradient
+Buttons	Gradient hover
+Navigation	Smooth transitions
+
+👉 This is a major UX maturity jump
+
+🎨 Design System & Brand Identity (Recap)
+✅ Custom MUI Theme (Fully Adopted)
+
+Eliminated default MUI blue
+
+Centralized styling system
+
+Consistent component behavior
+
+🎯 Brand Color Mapping
+Role	Color
+Primary Action	Yellow #FFD400
+Danger / Deals	Red #E53935
+Accent	Orange #FF6F00
+Success	Green #4CAF50 (restricted)
+Background	White / Light Gray
+Text	Black / Dark Gray
+🌈 Gradient System
+
+Hot Deal: #FFD400 → #FF6F00
+
+Urgency: #E53935 → #FF6F00
+
+Used in:
+
+AppBar
+
+FAB
+
+Buttons
+
+Splash
+
+🧱 MUI Component Overrides (Global)
+
+Customized:
+
+AppBar
+
+Button
+
+FAB
+
+BottomNavigation
+
+Alerts
+
+👉 No default styling leaks
+
+📱 Navigation UI
+
+Bottom navigation:
+
+Active = red
+
+Inactive = gray
+
+Matches “deal urgency” mental model
+
+➕ FAB (Primary Action Anchor)
+
+Gradient styling
+
+Elevated prominence
+
+Key interaction driver
+
+🔝 AppBar
+
+Gradient background
+
+Strong typography
+
+No elevation (modern look)
+
+💬 Feedback System
+
+Snackbar + Alert:
+
+Success → green
+
+Error → red
+
+Clear semantic feedback
+
+🧠 Styling Architecture
+Dual-layer system:
+1. MUI Theme
+
+Component styling
+
+Interaction consistency
+
+2. CSS Variables
+
+Layout
+
+Surfaces
+
+Custom UI
+
+👉 Scalable + maintainable
+
+🧱 Updated Tech Stack
 Frontend
 
 React (Vite)
 
-UI Framework
+UI
 
-Material UI (MUI)
+Material UI (MUI) + Custom Theme
+
+Styling
+
+Theme + CSS Variables
 
 Backend
 
 Firebase
 
-Authentication
-
-Firebase Authentication
-
 Database
 
-Cloud Firestore
+Firestore
 
-Spreadsheet Parsing
+Auth
+
+Firebase Auth
+
+Data Processing
 
 SheetJS (XLSX)
 
-Ads / Monetization
+Ads
 
 Google AdSense
 
 Animations
 
-Framer Motion
-
-🧠 Main Application Architecture
-
-Main Container
-
-MainScreen.jsx
-
-Responsibilities:
-
-Global state management
-
-Firestore realtime listeners
-
-Firebase operations
-
-Spreadsheet processing
-
-List sharing logic
-
-Member management
-
-Passing props to UI components
-
-Ad rendering
-
-Mobile navigation control
-
-Main State Variables
-lists
-selectedList
-items
-products
-members
-newItem
-open
-navValue
-newPassword
-passwordMessage
-passwordError
-alert
-createDialogOpen
-shareDialogOpen
-newListName
-shareEmail
-
-members state loads user data for list participants.
-
-📂 Component Structure
-src
-
-MainScreen.jsx
-
-components
-   AddItemFab.jsx
-   AddItemModal.jsx
-   MainBottomNavigation.jsx
-   ShoppingList.jsx
-   SettingsPanel.jsx
-   ListSelector.jsx
-   ListControls.jsx
-   AdBanner.jsx
-
-pages
-   PrivacyPolicy.jsx
-   Contact.jsx
-Component Responsibilities
-ListSelector
-
-Handles switching between shopping lists.
-
-ListControls
-
-Handles list actions:
-
-create list
-
-delete list
-
-clear items
-
-share list
-
-remove member
-
-leave list
-
-show member avatars
-
-AddItemModal
-
-Product search + add item modal.
-
-Uses:
-
-Material UI Autocomplete
-
-Advantages:
-
-search by typing
-
-scalable to thousands of products
-
-faster UX
-
-better mobile usability
-
-ShoppingList
-
-Displays shopping items and handles:
-
-quantity editing
-
-item removal
-
-price display
-
-price comparison
-
-SettingsPanel
-
-Contains:
-
-password change
-
-logout
-
-admin spreadsheet upload
-
-privacy policy navigation
-
-contact page navigation
-
-Navigation uses React Router navigate() for SPA navigation.
-
-AdBanner (NEW)
-
-Reusable ad component responsible for rendering Google AdSense units.
-
-Features:
-
-Safe initialization using useEffect
-
-React StrictMode compatibility
-
-Prevents duplicate adsbygoogle.push() calls
-
-Mobile-friendly responsive banner
-
-Example structure:
-
-<ins class="adsbygoogle">
-
-Used inside:
-
-MainScreen.jsx
-
-Displayed under shopping list content.
-
-PrivacyPolicy (NEW)
-
-Legal page containing:
-
-data collection explanation
-
-Google AdSense disclosure
-
-cookie policy
-
-developer contact information
-
-UI features:
-
-Material UI layout
-
-mobile AppBar
-
-back button navigation
-
-slide animation transitions
-
-Contact Page (NEW)
-
-Contains:
-
-developer contact information
-
-support message
-
-email address
-
-Also includes:
-
-AppBar
-
-back button
-
-animated transitions
-
-🔄 Real-Time Firestore Listeners
-Lists
-
-Query:
-
-sharedLists
-where members array-contains user.uid
-
-Used for collaborative list access.
-
-Products
-onSnapshot(products)
-
-Loads the product catalog used for item selection.
-
-Items
-sharedLists/{listId}/items
-
-Realtime updates when items are added or modified.
-
-🔄 Navigation System (NEW)
-
-App navigation handled with:
-
-React Router
-
-Main routes:
-
-/login
-/register
-/forgot-password
-/main
-/privacy
-/contact
-
-Animated transitions implemented with:
-
-Framer Motion
-
-Features:
-
-slide transition between pages
-
-mobile-style navigation
-
-back arrow support
-
-SPA navigation without reload
-
-📊 Price Spreadsheet Import System
-
-Admin-only feature.
-
-Visible when:
-
-auth.currentUser.email === 'jpchagas@gmail.com'
-
-Upload Flow
-
-Admin selects XLSX
-↓
-handlePriceUpload(event)
-↓
-Extract date from filename
-↓
-Parse spreadsheet
-↓
-Validate columns
-↓
-Normalize product IDs
-↓
-Create missing products
-↓
-Store price history
-↓
-Batch commit
-
-Required Spreadsheet Columns
-
-Produto
-UND
-MAX
-MAIS FREQUENTE
-MÍNIMO
-
-File Name Format
-
-Cotação DD_MM_AAAA.xlsx
-
-Example:
-
-Cotação 12_03_2026.xlsx
-
-Converted to:
-
-2026-03-12
-
-Stored as fileDate.
-
-🔧 Price Import Logic
-Product ID Normalization
-normalizeProductId(name)
-
-Example:
-
-Tomate (Italiano)
-→ tomate_italiano
-
-Removes:
-
-accents
-
-spaces
-
-parentheses
-
-slashes
-
-Prevents duplicate products.
-
-Batch Write System
-writeBatch(db)
-
-Benefits:
-
-atomic writes
-
-faster uploads
-
-fewer Firestore operations
-
-🎨 UI Improvements
-Snackbar Alerts
-
-Replaced blocking alerts with:
-
-Material UI
-
-Components:
-
-Snackbar + Alert
-
-Supported severities:
-
-success
-warning
-error
-
-Examples:
-
-🟡 Planilha vazia
-🟡 Colunas faltando
-🟢 143 produtos atualizados
-🔴 Erro ao processar planilha
-Product Search
-
-Uses:
-
-Material UI Autocomplete
-
-Advantages:
-
-fast typing search
-
-scalable
-
-better mobile UX
-
-Member Avatars
-
-List members display as:
-
-Avatar with initials
-
-Example:
-
-JP
-MS
-
-Derived from user email or name.
-
-Mobile Navigation UX (NEW)
-
-Settings → Privacy / Contact pages now behave like mobile app screens:
-
-Features:
-
-AppBar header
-
-back button navigation
-
-slide page transitions
-
-smooth route animations
-
-💰 Monetization (NEW)
-
-Initial ad integration completed.
-
-Using:
-
-Google AdSense
-
-Implementation:
-
-AdBanner.jsx
-
-Features:
-
-responsive banner ads
-
-safe React integration
-
-development-mode compatibility
-
-Current placement:
-
-ShoppingList
-↓
-AdBanner
-
-Future improvements:
-
-sticky bottom ads
-
-anchor ads
-
-AdSense Auto Ads
-
-🛠 Bugs Fixed Recently
-1️⃣ File Upload Error
-
-Error:
-
-TypeError: n.indexOf is not a function
-
-Cause:
-
-File input incorrectly calling addItem.
-
-Fix:
-
-handlePriceUpload(event)
-2️⃣ Missing Prop Error
-
-Error:
-
-handlePriceUpload is not defined
-
-Fix:
-
-Prop passed to SettingsPanel.
-
-3️⃣ Firestore Permission Errors
-
-Cause:
-
-User not present in list members.
-
-Fix:
-
-Ensured correct UID membership.
-
-4️⃣ Items Security Rule Edge Case
-
-Added parent document existence check.
-
-5️⃣ AdSense Duplicate Push Error (NEW)
-
-Error:
-
-adsbygoogle.push() error
-All 'ins' elements already have ads
-
-Cause:
-
-React StrictMode double effect execution.
-
-Fix:
-
-Prevent duplicate push using DOM status check.
-
-⚠️ Known Limitations
-1️⃣ List Ownership Permissions
-
-Currently any member can:
-
-delete list
-
-remove members
-
-share list
-
-Future improvement:
-
-Only ownerId should manage members.
-
-2️⃣ Importer Performance
-
-Current importer:
-
-await getDoc(productRef)
-
-inside loop.
-
-Optimization possible by:
-
-loading products once
-
-caching product map
-
-3️⃣ SettingsPanel Growing Large
-
-Future refactor:
-
-SettingsPanel
-   PasswordPanel
-   PrivacyPanel
-   AdminUploadPanel
-🚀 Recommended Next Development Tasks
-🥇 Owner Permissions
-
-Restrict:
-
-share list
-
-remove members
-
-delete list
-
-to ownerId.
-
-🥈 Product Import Optimization
-
-Load product catalog once.
-
-Avoid per-row getDoc.
-
-🥉 Product Search UX
-
-Improve Autocomplete:
-
-autofocus input
-
-press ENTER to add item
-
-instant add without button
-
-🏅 Mobile UX
-
-Improve:
-
-item editing
-
-keyboard shortcuts
-
-faster adding flow
-
-💰 Monetization Improvements
-
-Future steps:
-
-sticky bottom ads
-
-AdSense Auto Ads
-
-anchor ads
-
-improved ad viewability
-
-⭐ Current Feature Status
+Framer Motion + Custom micro-interactions (NEW)
+
+🎨 UX Maturity Upgrade
+Area	Before	Now
+Navigation feel	Web-like	App-like
+Transitions	Basic	Smooth & intentional
+First impression	OK	Strong
+Branding	Strong	Immersive
+Motion	Minimal	System-driven
+📊 Feature Status
 Feature	Status
 Authentication	✅
 Shopping list	✅
@@ -684,19 +264,67 @@ Product search autocomplete	✅
 Privacy policy	✅
 Contact page	✅
 AdSense integration	✅
-Mobile page transitions	✅
+Mobile transitions	✅
+Design system	✅
+Brand identity	✅
+Motion system (NEW)	✅
+Splash experience (NEW)	✅
+⚠️ Known Limitations
+1️⃣ Permissions System
+
+Still missing owner-only control
+
+2️⃣ Import Performance
+
+Uses getDoc inside loop
+
+3️⃣ SettingsPanel
+
+Needs modularization
+
+4️⃣ Theme
+
+No dark mode yet
+
+No dynamic switching
+
+🚀 Recommended Next Steps
+🥇 Owner Permissions
+
+(unchanged priority)
+
+🥈 Shopping List UI Upgrade (NOW EVEN MORE IMPORTANT)
+
+👉 Because your UX is now polished, this becomes the weakest link
+
+Upgrade to:
+
+promo cards
+
+price drop indicators
+
+savings highlights
+
+🥉 Product Import Optimization
+🏅 Add Item UX
+💰 Monetization Expansion
+🌙 Dark Mode
+
+Now very easy due to theme system
+
 📈 Project Stage
-Prototype        ✅
-Functional App   ✅
-Collaboration    ✅
-Price Data       ✅
-Admin Tools      ✅
-Multi-user Lists ✅
-Monetization     ✅ (initial)
-
-Current stage:
-
-MVP v0.95
+Stage	Status
+Prototype	✅
+Functional App	✅
+Collaboration	✅
+Price Intelligence	✅
+Admin Tools	✅
+Monetization	✅
+Design System	✅
+Brand Identity	✅
+Motion System	✅
+🏁 Current Stage
+👉 MVP v1.1
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
 

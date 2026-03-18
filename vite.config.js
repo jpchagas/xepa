@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Xepa - Lista de Compras',
         short_name: 'Xepa',
-        theme_color: '#4CAF50',
+        theme_color: '#FFD400', // 🔥 brand yellow
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait',

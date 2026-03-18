@@ -1,27 +1,38 @@
 :root {
+  /* 🎨 Brand Colors */
+  --color-primary: #FFD400;
+  --color-danger: #E53935;
+  --color-accent: #FF6F00;
+  --color-success: #4CAF50;
+
+  /* ⚫ Neutrals */
+  --color-black: #121212;
+  --color-dark-gray: #2C2C2E;
+  --color-light-gray: #F2F2F2;
+  --color-white: #FFFFFF;
+
+  /* 🎯 Roles */
+  --bg-main: var(--color-white);
+  --bg-secondary: var(--color-light-gray);
+  --text-primary: var(--color-black);
+  --text-secondary: var(--color-dark-gray);
+
+  /* 🌈 Gradients */
+  --gradient-hot: linear-gradient(135deg, #FFD400, #FF6F00);
+  --gradient-urgency: linear-gradient(135deg, #E53935, #FF6F00);
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--text-primary);
+  background-color: var(--bg-main);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* Reset */
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -30,41 +41,63 @@ html, body, #root {
 
 body {
   min-width: 320px;
+  background: var(--bg-main);
+  color: var(--text-primary);
 }
 
+/* Links */
+a {
+  font-weight: 500;
+  color: var(--color-danger);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+/* Typography */
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
 
+/* Buttons (🔥 important UX layer) */
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
+  border-radius: 10px;
+  border: none;
   padding: 0.6em 1.2em;
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+
+  background: var(--color-primary);
+  color: var(--color-black);
+
+  transition: all 0.2s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:hover {
+  transform: translateY(-1px);
+  background: var(--gradient-hot);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button.secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+button.danger {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+button.success {
+  background: var(--color-success);
+  color: var(--color-white);
 }
