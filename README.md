@@ -32,224 +32,153 @@ firebase deploy --only hosting
 
 🧾 Xepa App – Development Summary (Updated)
 
-Date: March 17, 2026
-Status: Stable collaborative shopping list with price intelligence + branded UI system + polished entry experience
+Date: March 18, 2026
+Status: Collaborative shopping list with price intelligence + branded UX + dynamic product creation + inline price engine
 
 🚀 Current Maturity
-👉 MVP v1.1 (Branded UX + Transition System)
+
+👉 MVP v1.2 (Dynamic Data + Inline Editing System)
+
 Evolution:
 
 v1.0 → functional + branded
 
 v1.1 → branded + experience-driven
 
+v1.2 → dynamic + user-extendable + reactive UI
+
 🔥 Major Updates Since Last Version
-🎬 NEW — Splash → Login Transition System
-✅ Splash Screen Enhancements
+🆕 Dynamic Product Creation (Core Feature Upgrade)
+Before:
 
-Logo-only layout (removed text)
+Users could only select existing products
 
-Increased logo size (visual dominance)
+Now:
 
-Added pulse animation (subtle life/feedback)
+Users can create products on-the-fly
 
-Implemented:
+Behavior:
 
-fade-out
+Type new product → create instantly in products
 
-zoom-out transition before navigation
+Automatically added to list
 
-✅ Login Screen Enhancements
+Starts with:
 
-Added entry animation:
+unit: null
 
-fade-in
+price: null
 
-slight upward motion (translateY)
+👉 Removes biggest UX bottleneck
 
-Synced timing with splash exit
+🆕 Inline Price Editor (Critical UX Leap)
+New Capability:
 
-🔗 Cross-Screen Continuity (NEW)
+Users can define:
 
-Logo appears in both:
+unit
 
-Splash (large)
+average price
 
-Login (smaller)
+👉 Directly inside the shopping list
 
-👉 Creates visual continuity between screens
+✨ Behavior:
+Scenario	Result
+New product	Editor auto-opens
+Product without price	Editor auto-opens
+Product complete	Clean display
+🧠 Smart Auto-Open Logic (State-Driven UX)
 
-🎯 Result
+Replaced fragile logic:
 
-Instead of:
+❌ isCustom flag-based
 
-hard page switch
+With:
 
-User experiences:
+✅ data-driven condition
 
-smooth screen transition (native-app feel)
+if (!item.price || !unit) → open editor
 
-🧠 NEW — Motion System (Micro-Interactions Layer)
+👉 Much more robust and scalable
 
-You now have a consistent animation language:
+🔄 Real-Time Price Sync (FIXED)
+Before:
 
-Interaction	Behavior
-Splash	Pulse + fade/zoom out
-Screen entry	Fade + rise
-FAB	Hover gradient
-Buttons	Gradient hover
-Navigation	Smooth transitions
+Price saved in prices/history
 
-👉 This is a major UX maturity jump
+UI didn’t update
 
-🎨 Design System & Brand Identity (Recap)
-✅ Custom MUI Theme (Fully Adopted)
+Now:
 
-Eliminated default MUI blue
+Price saved in:
 
-Centralized styling system
+prices/{product}/history ✅
 
-Consistent component behavior
+sharedLists/{list}/items ✅
 
-🎯 Brand Color Mapping
-Role	Color
-Primary Action	Yellow #FFD400
-Danger / Deals	Red #E53935
-Accent	Orange #FF6F00
-Success	Green #4CAF50 (restricted)
-Background	White / Light Gray
-Text	Black / Dark Gray
-🌈 Gradient System
+👉 Ensures:
 
-Hot Deal: #FFD400 → #FF6F00
+Instant UI updates
 
-Urgency: #E53935 → #FF6F00
+Real-time sync via Firestore listeners
 
-Used in:
+🧱 Component Architecture Upgrade
+Before:
 
-AppBar
+Logic duplicated inside ShoppingList.jsx
 
-FAB
+Now:
 
-Buttons
+Proper separation:
 
-Splash
+ShoppingList
+  ↓
+ShoppingListItem (smart component)
+Benefits:
 
-🧱 MUI Component Overrides (Global)
+Reusable logic
 
-Customized:
+Cleaner codebase
 
-AppBar
+Enables inline editing system
 
-Button
+⚡ Reactive UI Fixes (Important Stability Gains)
 
-FAB
+Fixed multiple subtle issues:
 
-BottomNavigation
+Missing prop drilling (getProductUnit)
 
-Alerts
+Wrong module resolution (firebase.json vs firebase.js)
 
-👉 No default styling leaks
+Non-reactive derived data (unitValue)
 
-📱 Navigation UI
+Component not mounted (critical bug)
 
-Bottom navigation:
+👉 Result: fully reactive UI
 
-Active = red
+🧠 Data Architecture Maturity
+You now have a clear 2-layer system:
+1. Historical Source of Truth
+prices/{productId}/history/{date}
+2. UI Snapshot (Fast Access)
+sharedLists/{listId}/items
 
-Inactive = gray
+👉 This is production-grade thinking
 
-Matches “deal urgency” mental model
+🎬 Motion System (Recap)
 
-➕ FAB (Primary Action Anchor)
+Still intact and now more impactful because:
 
-Gradient styling
+👉 interactions (like adding items) feel alive
 
-Elevated prominence
-
-Key interaction driver
-
-🔝 AppBar
-
-Gradient background
-
-Strong typography
-
-No elevation (modern look)
-
-💬 Feedback System
-
-Snackbar + Alert:
-
-Success → green
-
-Error → red
-
-Clear semantic feedback
-
-🧠 Styling Architecture
-Dual-layer system:
-1. MUI Theme
-
-Component styling
-
-Interaction consistency
-
-2. CSS Variables
-
-Layout
-
-Surfaces
-
-Custom UI
-
-👉 Scalable + maintainable
-
-🧱 Updated Tech Stack
-Frontend
-
-React (Vite)
-
-UI
-
-Material UI (MUI) + Custom Theme
-
-Styling
-
-Theme + CSS Variables
-
-Backend
-
-Firebase
-
-Database
-
-Firestore
-
-Auth
-
-Firebase Auth
-
-Data Processing
-
-SheetJS (XLSX)
-
-Ads
-
-Google AdSense
-
-Animations
-
-Framer Motion + Custom micro-interactions (NEW)
-
-🎨 UX Maturity Upgrade
+🎨 UX Maturity Upgrade (Updated)
 Area	Before	Now
-Navigation feel	Web-like	App-like
-Transitions	Basic	Smooth & intentional
-First impression	OK	Strong
-Branding	Strong	Immersive
-Motion	Minimal	System-driven
-📊 Feature Status
+Add item flow	Restricted	Flexible + user-driven
+Data completeness	External only	Inline editable
+Reactivity	Partial	Fully reactive
+Error resilience	Medium	High
+UX depth	Strong	Advanced
+📊 Feature Status (Updated)
 Feature	Status
 Authentication	✅
 Shopping list	✅
@@ -260,19 +189,23 @@ Price comparison	✅
 Collaborative lists	✅
 Member management	✅
 Snackbar notifications	✅
-Product search autocomplete	✅
+Product autocomplete	✅
+Manual product creation (NEW)	✅
+Inline price editor (NEW)	✅
+Auto-open UX logic (NEW)	✅
+Realtime UI sync fix (NEW)	✅
 Privacy policy	✅
 Contact page	✅
 AdSense integration	✅
 Mobile transitions	✅
 Design system	✅
 Brand identity	✅
-Motion system (NEW)	✅
-Splash experience (NEW)	✅
-⚠️ Known Limitations
+Motion system	✅
+Splash experience	✅
+⚠️ Known Limitations (Updated)
 1️⃣ Permissions System
 
-Still missing owner-only control
+Still no owner-only controls
 
 2️⃣ Import Performance
 
@@ -288,31 +221,63 @@ No dark mode yet
 
 No dynamic switching
 
-🚀 Recommended Next Steps
+5️⃣ Data Duplication (Intentional but Needs Strategy)
+
+Price stored in:
+
+history
+
+list item
+
+👉 Future: reconciliation / refresh strategy
+
+🚀 Recommended Next Steps (Updated Priority)
 🥇 Owner Permissions
 
-(unchanged priority)
+(no change)
 
-🥈 Shopping List UI Upgrade (NOW EVEN MORE IMPORTANT)
+🥈 Shopping List UI Upgrade (NOW CRITICAL)
 
-👉 Because your UX is now polished, this becomes the weakest link
+👉 Now your backend & UX logic are strong
+👉 UI is the weakest layer
 
-Upgrade to:
+Add:
 
-promo cards
+🟥 price drop badges
 
-price drop indicators
+🟩 savings highlight
 
-savings highlights
+🟨 “best deal” indicators
 
-🥉 Product Import Optimization
-🏅 Add Item UX
+🧾 item cards instead of plain list
+
+🥉 Add Item UX (Polish)
+
+Now that system works:
+
+auto-focus input
+
+open keyboard on mobile
+
+smarter autocomplete ranking
+
+🏅 Product Import Optimization
+
+Batch reads
+
+Remove per-row getDoc
+
 💰 Monetization Expansion
+
+smarter ad placement
+
+premium features?
+
 🌙 Dark Mode
 
-Now very easy due to theme system
+👉 Very easy now (theme system ready)
 
-📈 Project Stage
+📈 Project Stage (Updated)
 Stage	Status
 Prototype	✅
 Functional App	✅
@@ -323,8 +288,11 @@ Monetization	✅
 Design System	✅
 Brand Identity	✅
 Motion System	✅
+Dynamic Data System	✅
+Inline Editing UX	✅
 🏁 Current Stage
-👉 MVP v1.1
+
+👉 MVP v1.2
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
 
@@ -365,3 +333,6 @@ Mínimo(Min price)
 
 👉 Auto-suggest unit + price based on similar product names (fuzzy match)
 👉 or turn your list into “deal cards” (your biggest UX gap now)
+
+- show “price just added” animation (green flash + fade)
+- fix product, price productId
