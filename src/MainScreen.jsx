@@ -321,35 +321,76 @@ const deleteList = async () => {
   }
 
   /** Functions for child components */
-  const addItem = async (itemId) => {
-    if (!itemId || !selectedList) return
+  const addItem = async (newItem) => {
+  if (!newItem || !selectedList) return
 
-    const historyRef = collection(db, 'prices', itemId, 'history')
-    const q = query(historyRef, orderBy('fileDate', 'desc'), limit(2))
-    const snapshot = await getDocs(q)
+  let productId
 
-    let currentPrice = null
-    let previousPrice = null
-    let fileDate = null
-    const docs = snapshot.docs
-    if (docs.length > 0) {
-      currentPrice = docs[0].data().average
-      fileDate = docs[0].data().fileDate
-    }
-    if (docs.length > 1) previousPrice = docs[1].data().average
-
-    await addDoc(collection(db, 'sharedLists', selectedList.id, 'items'), {
-      productId: itemId,
-      price: currentPrice,
-      previousPrice,
-      amount: 1,
-      fileDate,
-      createdAt: serverTimestamp()
-    })
-
-    setNewItem('')
-    setOpen(false)
+  // ✅ EXISTING PRODUCT
+  if (newItem.type === 'existing') {
+    productId = newItem.product.id
   }
+
+  // ✅ NEW PRODUCT
+  if (newItem.type === 'new') {
+    const name = newItem.name.trim()
+    if (!name) return
+
+    // Optional: avoid duplicates
+    const existing = products.find(
+      (p) => p.name.toLowerCase() === name.toLowerCase()
+    )
+
+    if (existing) {
+      productId = existing.id
+    } else {
+      const docRef = await addDoc(collection(db, 'products'), {
+        name,
+        unit: null,
+        createdAt: serverTimestamp()
+      })
+
+      productId = docRef.id
+    }
+  }
+
+  // 🚫 Safety check
+  if (!productId) return
+
+  // 🔍 Get price history (same as your logic)
+  const historyRef = collection(db, 'prices', productId, 'history')
+  const q = query(historyRef, orderBy('fileDate', 'desc'), limit(2))
+  const snapshot = await getDocs(q)
+
+  let currentPrice = null
+  let previousPrice = null
+  let fileDate = null
+
+  const docs = snapshot.docs
+
+  if (docs.length > 0) {
+    currentPrice = docs[0].data().average
+    fileDate = docs[0].data().fileDate
+  }
+
+  if (docs.length > 1) {
+    previousPrice = docs[1].data().average
+  }
+
+  // 🧾 Add item to list
+  await addDoc(collection(db, 'sharedLists', selectedList.id, 'items'), {
+    productId,
+    price: currentPrice,
+    previousPrice,
+    amount: 1,
+    fileDate,
+    createdAt: serverTimestamp(),
+    isCustom: newItem.type === 'new'
+  })
+
+  setNewItem(null)
+  setOpen(false)
+}
 
   const updateAmount = async (id, value) => {
     if (!selectedList) return
@@ -532,6 +573,7 @@ const deleteList = async () => {
               getPriceColor={getPriceColor}
               formatCurrency={formatCurrency}
               totalPrice={totalPrice}
+              selectedList={selectedList}
             />
           </>
         )}

@@ -6,6 +6,9 @@ import {
   TextField,
   Autocomplete
 } from '@mui/material'
+import { createFilterOptions } from '@mui/material/Autocomplete'
+
+const filter = createFilterOptions()
 
 function AddItemModal({ open, onClose, products, newItem, setNewItem, addItem }) {
 
@@ -33,10 +36,51 @@ function AddItemModal({ open, onClose, products, newItem, setNewItem, addItem })
         </Typography>
 
         <Autocomplete
+          freeSolo
           options={sortedProducts}
-          getOptionLabel={(option) => option.name}
-          value={sortedProducts.find(p => p.id === newItem) || null}
-          onChange={(event, value) => setNewItem(value ? value.id : '')}
+          getOptionLabel={(option) => {
+            if (typeof option === 'string') return option
+            if (option.isNew) return option.inputValue
+            return option.name
+          }}
+          value={null}
+          onChange={(event, value) => {
+            if (!value) return
+
+            // Existing product
+            if (!value.isNew) {
+              setNewItem({
+                type: 'existing',
+                product: value
+              })
+              return
+            }
+
+            // New product
+            setNewItem({
+              type: 'new',
+              name: value.inputValue
+            })
+          }}
+          filterOptions={(options, params) => {
+            const filtered = filter(options, params)
+            const { inputValue } = params
+
+            const isExisting = options.some(
+              (option) =>
+                option.name.toLowerCase() === inputValue.toLowerCase()
+            )
+
+            if (inputValue !== '' && !isExisting) {
+              filtered.push({
+                inputValue,
+                name: `Adicionar "${inputValue}"`,
+                isNew: true
+              })
+            }
+
+            return filtered
+          }}
           renderInput={(params) => (
             <TextField {...params} label="Produto" />
           )}
