@@ -29,9 +29,10 @@ function ShoppingListItem({
   const [price, setPrice] = useState('')
   const [unit, setUnit] = useState('')
   const [initialized, setInitialized] = useState(false)
+  const [localAmount, setLocalAmount] = useState('')
 
   const effectivePrice = getEffectivePrice(item.productId, item.price)
-  const amount = item.amount || 1
+  const amount = item.amount ?? 1
   const itemTotal = effectivePrice * amount
 
   const hasPrice = !!item.price
@@ -39,7 +40,9 @@ function ShoppingListItem({
   const unitValue = getProductUnit(item.productId)
 
   //console.log('ITEM', item)
-  
+  useEffect(() => {
+    setLocalAmount(item.amount ?? '')
+  }, [item.amount])
 
   // Auto-open editor for custom items
   useEffect(() => {
@@ -109,10 +112,31 @@ function ShoppingListItem({
             type="number"
             size="small"
             label="Qtd"
-            value={amount}
+            value={localAmount}
             sx={{ width: 90, mr: 2 }}
-            inputProps={{ step: 0.1, min: 0 }}
-            onChange={(e) => updateAmount(item.id, e.target.value)}
+            inputProps={{
+              step: 0.1,
+              min: 0,
+              inputMode: 'decimal'
+            }}
+            onChange={(e) => {
+              const val = e.target.value
+
+              // Allow empty state
+              if (val === '') {
+                setLocalAmount('')
+                return
+              }
+
+              setLocalAmount(val)
+            }}
+            onBlur={() => {
+              if (localAmount === '') {
+                return // or default later if you want
+              }
+
+              updateAmount(item.id, Number(localAmount))
+            }}
           />
 
           <ListItemText
