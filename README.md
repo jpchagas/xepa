@@ -32,14 +32,14 @@ firebase deploy --only hosting
 
 🧾 Xepa App – Development Summary (Updated)
 
-Date: March 18, 2026
-Status: Collaborative shopping list with price intelligence + branded UX + dynamic product creation + inline price engine
+Date: March 20, 2026
+Status: Collaborative shopping list with price intelligence + dynamic data system + inline editing + cross-platform UX optimization
 
 🚀 Current Maturity
 
-👉 MVP v1.2 (Dynamic Data + Inline Editing System)
+👉 MVP v1.3 (UX Stability + Platform Optimization Layer)
 
-Evolution:
+Evolution
 
 v1.0 → functional + branded
 
@@ -47,137 +47,131 @@ v1.1 → branded + experience-driven
 
 v1.2 → dynamic + user-extendable + reactive UI
 
+v1.3 → UX-refined + platform-aware + input-stable
+
 🔥 Major Updates Since Last Version
-🆕 Dynamic Product Creation (Core Feature Upgrade)
+🆕 Input System Fix (Critical UX Upgrade)
 Before:
 
-Users could only select existing products
+Amount field (Qtd) forced fallback (|| 1)
+
+Users could NOT delete value
+
+Impossible to type 0.5, 2, etc.
 
 Now:
 
-Users can create products on-the-fly
-
-Behavior:
-
-Type new product → create instantly in products
-
-Automatically added to list
-
-Starts with:
-
-unit: null
-
-price: null
-
-👉 Removes biggest UX bottleneck
-
-🆕 Inline Price Editor (Critical UX Leap)
-New Capability:
-
-Users can define:
-
-unit
-
-average price
-
-👉 Directly inside the shopping list
+👉 Fully controlled local input state
 
 ✨ Behavior:
-Scenario	Result
-New product	Editor auto-opens
-Product without price	Editor auto-opens
-Product complete	Clean display
-🧠 Smart Auto-Open Logic (State-Driven UX)
+Action	Result
+Delete value	Field stays empty
+Type new value	Works naturally
+Leave field	Value saved correctly
+🧠 Architecture Fix:
 
-Replaced fragile logic:
+Separated UI state vs database state
 
-❌ isCustom flag-based
+Save happens on onBlur instead of every keystroke
 
-With:
+👉 This is production-grade input handling
 
-✅ data-driven condition
-
-if (!item.price || !unit) → open editor
-
-👉 Much more robust and scalable
-
-🔄 Real-Time Price Sync (FIXED)
+🆕 iOS Install Experience (Major Growth Unlock)
 Before:
 
-Price saved in prices/history
+iPhone users had no install guidance
 
-UI didn’t update
+Lost installs (critical)
 
 Now:
 
-Price saved in:
+👉 Custom install banner for iOS users
 
-prices/{product}/history ✅
+✨ Behavior:
 
-sharedLists/{list}/items ✅
+Detects iOS + Safari
 
-👉 Ensures:
+Detects if app already installed
 
-Instant UI updates
+Shows non-intrusive install instruction
 
-Real-time sync via Firestore listeners
+Can be dismissed (persisted in localStorage)
 
-🧱 Component Architecture Upgrade
+UX Copy:
+
+📲 Install Xepa
+Tap Share → “Add to Home Screen”
+
+🧱 Platform Detection Layer (New System)
+
+Created reusable utility layer:
+
+utils/deviceUtils.js
+
+Includes:
+
+iOS detection
+
+Safari detection
+
+Standalone mode detection
+
+👉 Enables:
+
+install UX
+
+future notification logic
+
+platform-specific features
+
+⚡ Animation System Fix (Stability Upgrade)
 Before:
 
-Logic duplicated inside ShoppingList.jsx
+AnimatePresence misuse
+
+Multiple children with mode="wait"
+
+Console warnings
+
+Potential broken transitions
 
 Now:
 
-Proper separation:
+👉 Clean separation:
 
-ShoppingList
-  ↓
-ShoppingListItem (smart component)
-Benefits:
+AnimatePresence → handles routes only
 
-Reusable logic
+Global UI (banner) → outside animation tree
 
-Cleaner codebase
+Result:
 
-Enables inline editing system
+No warnings
 
-⚡ Reactive UI Fixes (Important Stability Gains)
+Stable transitions
 
-Fixed multiple subtle issues:
+Correct animation lifecycle
 
-Missing prop drilling (getProductUnit)
+🧠 Input/Data Separation (Conceptual Upgrade)
 
-Wrong module resolution (firebase.json vs firebase.js)
+You introduced a key principle:
 
-Non-reactive derived data (unitValue)
+👉 “Input is not data”
 
-Component not mounted (critical bug)
+Now:
 
-👉 Result: fully reactive UI
+UI can be temporary, empty, flexible
 
-🧠 Data Architecture Maturity
-You now have a clear 2-layer system:
-1. Historical Source of Truth
-prices/{productId}/history/{date}
-2. UI Snapshot (Fast Access)
-sharedLists/{listId}/items
+Data is validated only when persisted
 
-👉 This is production-grade thinking
-
-🎬 Motion System (Recap)
-
-Still intact and now more impactful because:
-
-👉 interactions (like adding items) feel alive
+👉 This is a senior-level frontend pattern
 
 🎨 UX Maturity Upgrade (Updated)
 Area	Before	Now
-Add item flow	Restricted	Flexible + user-driven
-Data completeness	External only	Inline editable
-Reactivity	Partial	Fully reactive
-Error resilience	Medium	High
-UX depth	Strong	Advanced
+Amount input	Rigid / broken	Fluid + natural
+iOS experience	Missing	Guided install flow
+Platform awareness	None	Structured detection layer
+Animation stability	Fragile	Robust
+Input handling	Coupled to DB	Decoupled
 📊 Feature Status (Updated)
 Feature	Status
 Authentication	✅
@@ -190,10 +184,14 @@ Collaborative lists	✅
 Member management	✅
 Snackbar notifications	✅
 Product autocomplete	✅
-Manual product creation (NEW)	✅
-Inline price editor (NEW)	✅
-Auto-open UX logic (NEW)	✅
-Realtime UI sync fix (NEW)	✅
+Manual product creation	✅
+Inline price editor	✅
+Auto-open UX logic	✅
+Realtime UI sync fix	✅
+Amount input fix (NEW)	✅
+iOS install experience (NEW)	✅
+Platform detection layer (NEW)	✅
+Animation system fix (NEW)	✅
 Privacy policy	✅
 Contact page	✅
 AdSense integration	✅
@@ -205,77 +203,76 @@ Splash experience	✅
 ⚠️ Known Limitations (Updated)
 1️⃣ Permissions System
 
-Still no owner-only controls
+No owner-only controls yet
 
 2️⃣ Import Performance
 
-Uses getDoc inside loop
+Still using getDoc in loop
 
-3️⃣ SettingsPanel
+3️⃣ Settings Panel
 
 Needs modularization
 
-4️⃣ Theme
+4️⃣ Theme System
 
-No dark mode yet
+No dark mode
 
 No dynamic switching
 
-5️⃣ Data Duplication (Intentional but Needs Strategy)
+5️⃣ Data Duplication Strategy
 
-Price stored in:
-
-history
-
-list item
-
-👉 Future: reconciliation / refresh strategy
+Still needs reconciliation layer
 
 🚀 Recommended Next Steps (Updated Priority)
-🥇 Owner Permissions
+🥇 System Notifications (NOW UNLOCKED)
 
-(no change)
+👉 You are now ready
 
-🥈 Shopping List UI Upgrade (NOW CRITICAL)
+Why:
 
-👉 Now your backend & UX logic are strong
-👉 UI is the weakest layer
+Input is reliable
+
+Platform detection exists
+
+UX timing can be controlled
+
+🥈 Shopping List UI Upgrade (CRITICAL)
+
+Still your biggest gap:
 
 Add:
 
 🟥 price drop badges
 
-🟩 savings highlight
+🟩 savings highlights
 
-🟨 “best deal” indicators
+🟨 best deal indicators
 
-🧾 item cards instead of plain list
+🧾 item cards
 
-🥉 Add Item UX (Polish)
-
-Now that system works:
+🥉 Add Item UX Polish
 
 auto-focus input
 
-open keyboard on mobile
+open keyboard (mobile)
 
-smarter autocomplete ranking
+smarter autocomplete
 
 🏅 Product Import Optimization
 
-Batch reads
+batch reads
 
-Remove per-row getDoc
+remove per-row queries
 
 💰 Monetization Expansion
 
 smarter ad placement
 
-premium features?
+premium features
 
 🌙 Dark Mode
 
-👉 Very easy now (theme system ready)
+👉 Easy win now
 
 📈 Project Stage (Updated)
 Stage	Status
@@ -290,9 +287,11 @@ Brand Identity	✅
 Motion System	✅
 Dynamic Data System	✅
 Inline Editing UX	✅
+UX Stability Layer	✅
+Platform Awareness Layer	✅
 🏁 Current Stage
 
-👉 MVP v1.2
+👉 MVP v1.3
 
 CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
 
@@ -319,7 +318,6 @@ Mínimo(Min price)
 • Auto-refresh price change notifications
 
 - Advertising
-- User add product if not exist on database
 
 - Better mobile UX
 
@@ -329,10 +327,28 @@ Mínimo(Min price)
 
 - Auto Ads from AdSense
 - safer AdSense integration for React PWAs that prevents all future adsbygoogle errors and memory leaks.
-- System Notifications (Real Push Notifications)
+- System Notifications (Real Push Notifications) Android
+- IOs
+- Fix amout value
+- Fix install IOS
+- Adicionar produtos na safra
+
 
 👉 Auto-suggest unit + price based on similar product names (fuzzy match)
 👉 or turn your list into “deal cards” (your biggest UX gap now)
 
 - show “price just added” animation (green flash + fade)
 - fix product, price productId
+
+🚀 The Next Big Leap
+
+You are one layer away from this:
+
+“People don’t just track groceries —
+they optimize spending decisions with Xepa.”
+
+That shift happens with:
+
+👉 UI + price intelligence exposure
+
+The next feature i want to implement is the System Notifications (Real Push Notifications) 

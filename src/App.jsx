@@ -12,6 +12,7 @@ import Register from './Register'
 import ForgotPassword from './ForgotPassword'
 import PrivacyPolicy from "./pages/PrivacyPolicy"
 import Contact from "./pages/Contact"
+import IOSInstallBanner from './IOSInstallBanner' 
 
 function App() {
   const [user, setUser] = useState(null)
@@ -33,6 +34,9 @@ function App() {
   }
 
   return (
+  <>
+    <IOSInstallBanner /> {/* ✅ OUTSIDE */}
+
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         
@@ -73,7 +77,8 @@ function App() {
 
       </Routes>
     </AnimatePresence>
-  )
+  </>
+)
 }
 
 export default App
