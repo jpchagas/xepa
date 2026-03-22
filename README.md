@@ -304,3 +304,5 @@ Unidade(KG, DZ, UND,MOL,BDJ, CX, CXT)
 Max(Max price)
 Mais Frequente(Average price)
 Mínimo(Min price)
+
+The next feature i want to implement is the System Notifications (Real Push Notifications) Android and IOS, i know IOS could be be a little tricky. So implement one each time. If you can suggest to me where i can put this notifications, because my ideia is when a product is added or remove from a list, if a product that exists in a list increase or decrease the price and after upload new product files.
