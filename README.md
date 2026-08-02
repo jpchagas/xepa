@@ -1,308 +1,296 @@
-# React + Vite
+# <p align="center"><img src="public/xepa_logo.png" alt="Xepa Logo" width="140"></p>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<h1 align="center">🧾 Xepa</h1>
 
-Currently, two official plugins are available:
+<p align="center">
+  <strong>Smart collaborative shopping lists with price intelligence.</strong>
+</p>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+<p align="center">
+  Plan grocery shopping together, compare prices, and make smarter purchasing decisions.
+</p>
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📖 Overview
 
-## Expanding the ESLint configuration
+Xepa is a collaborative grocery shopping application built with **React**, **Vite**, and **Firebase**.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The application allows multiple users to share shopping lists in real time while leveraging historical market prices to help identify better deals and monitor price variations.
 
-## Deployment
-``` bash
+Originally developed as a personal project, Xepa focuses on providing a simple, mobile-first experience while exploring practical applications of real-world pricing data.
+
+---
+
+# ✨ Features
+
+### 🛒 Shopping Lists
+
+* Create multiple shopping lists
+* Real-time collaboration
+* Inline editing
+* Product quantities
+* Manual product creation
+
+### 👥 Collaboration
+
+* Share lists with multiple users
+* Member management
+* Live synchronization using Cloud Firestore
+
+### 💰 Price Intelligence
+
+* Historical product prices
+* Average, minimum and maximum prices
+* Product autocomplete
+* Price comparison against historical values
+
+### 📥 Spreadsheet Import
+
+* Import pricing spreadsheets
+* Automatic product matching
+* Batch product creation
+
+### 📱 Mobile Experience
+
+* Responsive interface
+* Progressive Web App (PWA)
+* iOS installation guidance
+* Smooth page transitions
+
+### 🎨 User Experience
+
+* Snackbar notifications
+* Motion-based navigation
+* Optimized controlled inputs
+* Mobile-first design
+
+---
+
+# 📊 Price Data
+
+Xepa's price intelligence is based on public market data published by **CEASA/RS (Centrais de Abastecimento do Rio Grande do Sul)**.
+
+The application imports pricing information from the official Google Sheets dataset and stores it in Cloud Firestore for historical comparison.
+
+**Data source:**
+
+https://drive.google.com/drive/folders/1H7amJHE6-sysxqZYLjEq9bArQ0K_EvxY
+
+Each imported record contains:
+
+| Field   | Description                                                |
+| ------- | ---------------------------------------------------------- |
+| Product | Product name                                               |
+| Unit    | Unit of measurement (KG, DZ, UND, MOL, BDJ, CX, CXT, etc.) |
+| Maximum | Highest recorded price                                     |
+| Average | Most frequent / average market price                       |
+| Minimum | Lowest recorded price                                      |
+
+This information is used to provide historical price references within the application. Xepa is **not affiliated with CEASA/RS** and does not modify the original published pricing data.
+
+---
+
+# 🛠 Tech Stack
+
+## Frontend
+
+* React
+* Vite
+* React Router
+* Material UI
+* Framer Motion
+
+## Backend
+
+* Firebase Authentication
+* Cloud Firestore
+* Firebase Hosting
+
+## Tooling
+
+* ESLint
+* npm
+
+---
+
+# 🏗 Architecture
+
+The application is organized around four primary Firestore collections:
+
+```text
+users
+products
+prices
+sharedLists
+```
+
+Each shopping list contains an `items` subcollection that stores its products and pricing information, allowing independent real-time synchronization for every shared list.
+
+Key architectural decisions include:
+
+* Separation between UI state and persisted database state
+* Firestore realtime listeners
+* Mobile-first responsive design
+* Reusable platform detection utilities
+* Component-based React architecture
+
+---
+
+# 📂 Project Structure
+
+```text
+.
+├── public/
+│   ├── xepa_logo.png
+│   └── ...
+│
+├── src/
+│   ├── components/
+│   ├── pages/
+│   ├── firebase.js
+│   ├── ShoppingList.jsx
+│   ├── AddItemModal.jsx
+│   ├── SettingsPanel.jsx
+│   └── ...
+│
+├── README.md
+├── LICENSE
+└── package.json
+```
+
+---
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+* Node.js 20+
+* npm
+* Firebase project
+
+## Clone the repository
+
+```bash
+git clone https://github.com/<your-username>/xepa.git
+
+cd xepa
+```
+
+## Install dependencies
+
+```bash
+npm install
+```
+
+## Configure Firebase
+
+Create a `.env` file in the project root.
+
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+
+Fill the variables using your Firebase project configuration.
+
+---
+
+# 💻 Running Locally
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Create a production build:
+
+```bash
 npm run build
 ```
 
-``` bash
-npm run preview 
+Preview the production build:
+
+```bash
+npm run preview
 ```
 
-``` bash
+---
+
+# 🚀 Deployment
+
+Deploy to Firebase Hosting:
+
+```bash
 firebase deploy --only hosting
 ```
 
-## Current Context
+---
 
-🧾 Xepa App – Development Summary (Updated)
+# 📊 Current Status
 
-Date: March 20, 2026
-Status: Collaborative shopping list with price intelligence + dynamic data system + inline editing + cross-platform UX optimization
+**Version:** MVP v1.3
 
-🚀 Current Maturity
+Implemented features:
 
-👉 MVP v1.3 (UX Stability + Platform Optimization Layer)
+* ✅ Authentication
+* ✅ Collaborative shopping lists
+* ✅ Realtime synchronization
+* ✅ Price history
+* ✅ Spreadsheet import
+* ✅ Product autocomplete
+* ✅ Inline editing
+* ✅ Member management
+* ✅ Responsive UI
+* ✅ Motion system
+* ✅ Progressive Web App
+* ✅ iOS install guidance
+* ✅ Privacy Policy
+* ✅ Contact page
+* ✅ Google AdSense integration
 
-Evolution
+---
 
-v1.0 → functional + branded
+# 🗺 Roadmap
 
-v1.1 → branded + experience-driven
+Planned improvements:
 
-v1.2 → dynamic + user-extendable + reactive UI
+* Push notifications
+* Price drop indicators
+* Savings highlights
+* Shopping insights
+* Dark mode
+* Owner/Admin permissions
+* Import performance optimization
+* Offline support
+* Premium features
 
-v1.3 → UX-refined + platform-aware + input-stable
+---
 
-🔥 Major Updates Since Last Version
-🆕 Input System Fix (Critical UX Upgrade)
-Before:
+# 🤝 Contributing
 
-Amount field (Qtd) forced fallback (|| 1)
+Contributions, suggestions and bug reports are welcome.
 
-Users could NOT delete value
+1. Fork the repository.
+2. Create a feature branch.
+3. Commit your changes.
+4. Open a Pull Request.
 
-Impossible to type 0.5, 2, etc.
+---
 
-Now:
+# 📄 License
 
-👉 Fully controlled local input state
+This project is licensed under the MIT License.
 
-✨ Behavior:
-Action	Result
-Delete value	Field stays empty
-Type new value	Works naturally
-Leave field	Value saved correctly
-🧠 Architecture Fix:
+See the **LICENSE** file for more information.
 
-Separated UI state vs database state
+---
 
-Save happens on onBlur instead of every keystroke
-
-👉 This is production-grade input handling
-
-🆕 iOS Install Experience (Major Growth Unlock)
-Before:
-
-iPhone users had no install guidance
-
-Lost installs (critical)
-
-Now:
-
-👉 Custom install banner for iOS users
-
-✨ Behavior:
-
-Detects iOS + Safari
-
-Detects if app already installed
-
-Shows non-intrusive install instruction
-
-Can be dismissed (persisted in localStorage)
-
-UX Copy:
-
-📲 Install Xepa
-Tap Share → “Add to Home Screen”
-
-🧱 Platform Detection Layer (New System)
-
-Created reusable utility layer:
-
-utils/deviceUtils.js
-
-Includes:
-
-iOS detection
-
-Safari detection
-
-Standalone mode detection
-
-👉 Enables:
-
-install UX
-
-future notification logic
-
-platform-specific features
-
-⚡ Animation System Fix (Stability Upgrade)
-Before:
-
-AnimatePresence misuse
-
-Multiple children with mode="wait"
-
-Console warnings
-
-Potential broken transitions
-
-Now:
-
-👉 Clean separation:
-
-AnimatePresence → handles routes only
-
-Global UI (banner) → outside animation tree
-
-Result:
-
-No warnings
-
-Stable transitions
-
-Correct animation lifecycle
-
-🧠 Input/Data Separation (Conceptual Upgrade)
-
-You introduced a key principle:
-
-👉 “Input is not data”
-
-Now:
-
-UI can be temporary, empty, flexible
-
-Data is validated only when persisted
-
-👉 This is a senior-level frontend pattern
-
-🎨 UX Maturity Upgrade (Updated)
-Area	Before	Now
-Amount input	Rigid / broken	Fluid + natural
-iOS experience	Missing	Guided install flow
-Platform awareness	None	Structured detection layer
-Animation stability	Fragile	Robust
-Input handling	Coupled to DB	Decoupled
-📊 Feature Status (Updated)
-Feature	Status
-Authentication	✅
-Shopping list	✅
-Realtime updates	✅
-Price history	✅
-Spreadsheet import	✅
-Price comparison	✅
-Collaborative lists	✅
-Member management	✅
-Snackbar notifications	✅
-Product autocomplete	✅
-Manual product creation	✅
-Inline price editor	✅
-Auto-open UX logic	✅
-Realtime UI sync fix	✅
-Amount input fix (NEW)	✅
-iOS install experience (NEW)	✅
-Platform detection layer (NEW)	✅
-Animation system fix (NEW)	✅
-Privacy policy	✅
-Contact page	✅
-AdSense integration	✅
-Mobile transitions	✅
-Design system	✅
-Brand identity	✅
-Motion system	✅
-Splash experience	✅
-⚠️ Known Limitations (Updated)
-1️⃣ Permissions System
-
-No owner-only controls yet
-
-2️⃣ Import Performance
-
-Still using getDoc in loop
-
-3️⃣ Settings Panel
-
-Needs modularization
-
-4️⃣ Theme System
-
-No dark mode
-
-No dynamic switching
-
-5️⃣ Data Duplication Strategy
-
-Still needs reconciliation layer
-
-🚀 Recommended Next Steps (Updated Priority)
-🥇 System Notifications (NOW UNLOCKED)
-
-👉 You are now ready
-
-Why:
-
-Input is reliable
-
-Platform detection exists
-
-UX timing can be controlled
-
-🥈 Shopping List UI Upgrade (CRITICAL)
-
-Still your biggest gap:
-
-Add:
-
-🟥 price drop badges
-
-🟩 savings highlights
-
-🟨 best deal indicators
-
-🧾 item cards
-
-🥉 Add Item UX Polish
-
-auto-focus input
-
-open keyboard (mobile)
-
-smarter autocomplete
-
-🏅 Product Import Optimization
-
-batch reads
-
-remove per-row queries
-
-💰 Monetization Expansion
-
-smarter ad placement
-
-premium features
-
-🌙 Dark Mode
-
-👉 Easy win now
-
-📈 Project Stage (Updated)
-Stage	Status
-Prototype	✅
-Functional App	✅
-Collaboration	✅
-Price Intelligence	✅
-Admin Tools	✅
-Monetization	✅
-Design System	✅
-Brand Identity	✅
-Motion System	✅
-Dynamic Data System	✅
-Inline Editing UX	✅
-UX Stability Layer	✅
-Platform Awareness Layer	✅
-🏁 Current Stage
-
-👉 MVP v1.3
-
-CEASARS(Centrais de Abastecimento do Rio Grande do Sul) DB:
-
-URL: https://drive.google.com/drive/folders/1H7amJHE6-sysxqZYLjEq9bArQ0K_EvxY
-
-Format: Google Sheets
-
-Produto
-Unidade(KG, DZ, UND,MOL,BDJ, CX, CXT)
-Max(Max price)
-Mais Frequente(Average price)
-Mínimo(Min price)
-
-The next feature i want to implement is the System Notifications (Real Push Notifications) Android and IOS, i know IOS could be be a little tricky. So implement one each time. If you can suggest to me where i can put this notifications, because my ideia is when a product is added or remove from a list, if a product that exists in a list increase or decrease the price and after upload new product files.
+<p align="center">
+Built with ❤️ using React, Firebase and Vite.
+</p>
