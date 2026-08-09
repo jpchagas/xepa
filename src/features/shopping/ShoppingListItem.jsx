@@ -11,7 +11,7 @@ import {
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase' // adjust path if needed
+import { db } from '../../services/firebase' 
 
 function ShoppingListItem({
   item,

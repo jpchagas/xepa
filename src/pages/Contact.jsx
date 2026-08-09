@@ -1,5 +1,5 @@
-import PageSlide from "../components/PageSlide";
-import PageAppBar from "../components/PageAppBar";
+import PageSlide from "../components/layout/PageSlide";
+import PageAppBar from "../components/navigation/PageAppBar";
 import { Paper, Typography } from "@mui/material";
 
 export default function Contact() {

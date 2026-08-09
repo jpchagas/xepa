@@ -1,9 +1,9 @@
-// src/firebase.js
+// Firebase
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import {
   initializeFirestore,
-  persistentLocalCache
+  persistentLocalCache,
 } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -17,7 +17,16 @@ const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
 
-// 🔥 Firestore with offline persistence
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache()
+  localCache: persistentLocalCache(),
 })
+
+export default app
+
+
+// Good
+//import { auth, db } from '../../services/firebase'
+
+
+// Old
+//import { auth } from './firebase'

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Box, Button, Typography } from '@mui/material'
-import { isIOS, isSafari, isInStandaloneMode } from './iosUtils'
+import { isIOS, isSafari, isInStandaloneMode } from '../../utils/deviceUtils'
 
 export default function IOSInstallBanner() {
   const [visible, setVisible] = useState(false)

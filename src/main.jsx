@@ -1,19 +1,26 @@
-// main.jsx
+// React
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { ThemeProvider, CssBaseline } from '@mui/material'
 
-import './index.css'
-import App from './App.jsx'
-import theme from './theme' // 👈 import your custom theme
+// Third-party
+import { BrowserRouter } from 'react-router-dom'
+import { CssBaseline, ThemeProvider } from '@mui/material'
 
 import '@fontsource/roboto/300.css'
 import '@fontsource/roboto/400.css'
 import '@fontsource/roboto/500.css'
 import '@fontsource/roboto/700.css'
 
-createRoot(document.getElementById('root')).render(
+// App
+import App from './App'
+import theme from './theme'
+
+// Styles
+import './styles/index.css'
+
+const root = createRoot(document.getElementById('root'))
+
+root.render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />

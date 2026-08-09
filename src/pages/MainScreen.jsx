@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Box, Container, AppBar, Toolbar, Typography, Alert, Snackbar,Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button} from '@mui/material'
-import { auth, db } from './firebase'
+import { auth, db } from '../services/firebase'
 import { updatePassword, signOut } from 'firebase/auth'
 import {
   collection,
@@ -23,14 +23,14 @@ import {
 
 import * as XLSX from 'xlsx'
 
-import AddItemFab from './AddItemFab'
-import MainBottomNavigation from './MainBottomNavigation'
-import AddItemModal from './AddItemModal'
-import ShoppingList from './ShoppingList'
-import SettingsPanel from './SettingsPanel'
-import ListSelector from './ListSelector'
-import ListControls from './ListControls'
-import AdBanner from "./components/AdBanner";
+import AddItemFab from '../features/shopping/AddItemFab'
+import MainBottomNavigation from '../components/navigation/MainBottomNavigation'
+import AddItemModal from '../features/shopping/AddItemModal'
+import ShoppingList from '../features/shopping/ShoppingList'
+import SettingsPanel from '../features/settings/SettingsPanel'
+import ListSelector from '../features/shopping/ListSelector'
+import ListControls from '../features/shopping/ListControls'
+import AdBanner from "../components/feedback/AdBanner";
 
 
 function MainScreen() {

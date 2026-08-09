@@ -1,84 +1,39 @@
-// App.jsx
-import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from './firebase'
-import { AnimatePresence } from 'framer-motion'
+// Routing
+import { useLocation } from 'react-router-dom'
 
-import SplashScreen from './SplashScreen.jsx'
-import Login from './Login.jsx'
-import MainScreen from './MainScreen.jsx'
-import Register from './Register'
-import ForgotPassword from './ForgotPassword'
-import PrivacyPolicy from "./pages/PrivacyPolicy"
-import Contact from "./pages/Contact"
-import IOSInstallBanner from './IOSInstallBanner' 
+// Components
+import SplashScreen from './components/feedback/SplashScreen'
+import IOSInstallBanner from './components/feedback/IOSInstallBanner'
+
+// Hooks
+import useAuth from './hooks/useAuth'
+import useSplashScreen from './hooks/useSplashScreen'
+
+// Routes
+import AppRoutes from './routes/AppRoutes'
 
 function App() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-
   const location = useLocation()
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser)
-      setLoading(false)
-    })
+  const { user, loading: authLoading } = useAuth()
+  const splashFinished = useSplashScreen()
 
-    return unsubscribe
-  }, [])
+  const isAppLoading = authLoading || !splashFinished
 
-  if (loading) {
+  if (isAppLoading) {
     return <SplashScreen />
   }
 
   return (
-  <>
-    <IOSInstallBanner /> {/* ✅ OUTSIDE */}
+    <>
+      <IOSInstallBanner />
 
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        
-        <Route
-          path="/"
-          element={<Navigate to={user ? '/main' : '/login'} />}
-        />
-
-        <Route
-          path="/login"
-          element={!user ? <Login /> : <Navigate to="/main" />}
-        />
-
-        <Route
-          path="/main"
-          element={user ? <MainScreen /> : <Navigate to="/login" />}
-        />
-
-        <Route
-          path="/register"
-          element={!user ? <Register /> : <Navigate to="/main" />}
-        />
-
-        <Route
-          path="/forgot-password"
-          element={<ForgotPassword />}
-        />
-
-        <Route
-          path="/privacy"
-          element={<PrivacyPolicy />}
-        />
-
-        <Route
-          path="/contact"
-          element={<Contact />}
-        />
-
-      </Routes>
-    </AnimatePresence>
-  </>
-)
+      <AppRoutes
+        user={user}
+        location={location}
+      />
+    </>
+  )
 }
 
 export default App
