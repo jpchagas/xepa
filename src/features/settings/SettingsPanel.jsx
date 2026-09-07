@@ -1,5 +1,14 @@
-import { Paper, Typography, TextField, Alert, Button, Box } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  Paper,
+  TextField,
+  Typography
+} from '@mui/material'
+
 import { useNavigate } from 'react-router-dom'
+
 
 function SettingsPanel({
   newPassword,
@@ -9,40 +18,70 @@ function SettingsPanel({
   handleChangePassword,
   handleLogout,
   isAdmin,
-  selectedList,
-  products,
-  addItem,
   handlePriceUpload
 }) {
-
   const navigate = useNavigate()
 
-  return (
-    <Paper sx={{ p: 3, minHeight: '60vh' }}>
-      <Typography variant="h6" mb={2}>Configurações</Typography>
 
-      <Typography variant="subtitle1">Alterar Senha</Typography>
+  return (
+    <Paper
+      sx={{
+        p: 3,
+        minHeight: '60vh'
+      }}
+    >
+      <Typography
+        variant="h6"
+        mb={2}
+      >
+        Configurações
+      </Typography>
+
+
+      <Typography variant="subtitle1">
+        Alterar Senha
+      </Typography>
+
 
       <TextField
         label="Nova Senha"
         type="password"
         fullWidth
         value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
+        onChange={event =>
+          setNewPassword(
+            event.target.value
+          )
+        }
         sx={{ mb: 2 }}
       />
 
-      {passwordError && <Alert severity="error">{passwordError}</Alert>}
-      {passwordMessage && <Alert severity="success">{passwordMessage}</Alert>}
+
+      {passwordError && (
+        <Alert severity="error">
+          {passwordError}
+        </Alert>
+      )}
+
+
+      {passwordMessage && (
+        <Alert severity="success">
+          {passwordMessage}
+        </Alert>
+      )}
+
 
       <Button
         variant="contained"
         fullWidth
-        onClick={handleChangePassword}
+        onClick={
+          handleChangePassword
+        }
         sx={{ mb: 2 }}
       >
         Alterar Senha
       </Button>
+
 
       <Button
         variant="outlined"
@@ -53,49 +92,68 @@ function SettingsPanel({
         Sair
       </Button>
 
+
       {isAdmin && (
         <>
-          <Typography variant="subtitle1" sx={{ mt: 4 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ mt: 4 }}
+          >
             Upload Planilha de Preços
           </Typography>
 
-          <Button variant="outlined" component="label" fullWidth sx={{ mt: 2 }}>
+
+          <Button
+            variant="outlined"
+            component="label"
+            fullWidth
+            sx={{ mt: 2 }}
+          >
             Selecionar Arquivo CSV/XLSX
+
             <input
               type="file"
               hidden
               accept=".csv,.xlsx"
-              onChange={handlePriceUpload}
+              onChange={
+                handlePriceUpload
+              }
             />
           </Button>
         </>
       )}
 
-      {/* Privacy & Contact Section */}
+
       <Box sx={{ mt: 5 }}>
         <Typography variant="subtitle1">
           Privacidade e Contato
         </Typography>
 
+
         <Button
           variant="text"
           fullWidth
-          onClick={() => navigate('/privacy')}
+          onClick={() =>
+            navigate('/privacy')
+          }
         >
           Política de Privacidade
         </Button>
 
+
         <Button
           variant="text"
           fullWidth
-          onClick={() => navigate('/contact')}
+          onClick={() =>
+            navigate('/contact')
+          }
         >
           Contato
         </Button>
       </Box>
-
     </Paper>
   )
 }
+
 
 export default SettingsPanel

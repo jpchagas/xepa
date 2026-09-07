@@ -1,172 +1,150 @@
-import { useState, useEffect } from 'react'
-import { Box, Container, AppBar, Toolbar, Typography, Alert, Snackbar,Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button} from '@mui/material'
-import { auth, db } from '../services/firebase'
-import { updatePassword, signOut } from 'firebase/auth'
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  getDocs,
-  getDoc,
-  query,
-  where,
-  serverTimestamp,
-  orderBy,
-  limit,
-  writeBatch,
-  arrayUnion,
-  arrayRemove
-} from 'firebase/firestore'
+import { useState } from 'react'
 
-import * as XLSX from 'xlsx'
+// Third-party
+
+import {
+  Alert,
+  AppBar,
+  Box,
+  Container,
+  Snackbar,
+  Toolbar,
+  Typography
+} from '@mui/material'
+
+// Components
 
 import AddItemFab from '../features/shopping/AddItemFab'
-import MainBottomNavigation from '../components/navigation/MainBottomNavigation'
 import AddItemModal from '../features/shopping/AddItemModal'
-import ShoppingList from '../features/shopping/ShoppingList'
-import SettingsPanel from '../features/settings/SettingsPanel'
-import ListSelector from '../features/shopping/ListSelector'
+import AdBanner from '../components/feedback/AdBanner'
+import CreateListDialog from '../features/shopping/CreateListDialog'
 import ListControls from '../features/shopping/ListControls'
-import AdBanner from "../components/feedback/AdBanner";
+import ListSelector from '../features/shopping/ListSelector'
+import MainBottomNavigation from '../components/navigation/MainBottomNavigation'
+import SettingsPanel from '../features/settings/SettingsPanel'
+import ShareListDialog from '../features/shopping/ShareListDialog'
+import ShoppingList from '../features/shopping/ShoppingList'
+
+// Hooks
+
+import useListMembers from '../hooks/useListMembers'
+import usePassword from '../hooks/usePassword'
+import usePriceUpload from '../hooks/usePriceUpload'
+import useProducts from '../hooks/useProducts'
+import useShoppingItems from '../hooks/useShoppingItems'
+import useShoppingLists from '../hooks/useShoppingLists'
+
+// Firebase
+
+import { auth } from '../services/firebase'
+
+// Utils
+
+import {
+  calculateTotalPrice,
+  formatCurrency,
+  getDisplayUnit,
+  getEffectivePrice,
+  getPriceColor,
+  getProductName,
+  getProductUnit
+} from '../utils/shoppingHelpers'
 
 
 function MainScreen() {
-  const [lists, setLists] = useState([])
-  const [selectedList, setSelectedList] = useState(null)
-  const [items, setItems] = useState([])
-  const [products, setProducts] = useState([])
-  const [newItem, setNewItem] = useState('')
-  const [open, setOpen] = useState(false)
-  const [navValue, setNavValue] = useState(0)
-  const [newPassword, setNewPassword] = useState('')
-  const [passwordMessage, setPasswordMessage] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [alert, setAlert] = useState({
-  open: false,
-  severity: 'success',
-  message: ''
-  })
-  const [members,setMembers] = useState([])
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [newListName, setNewListName] = useState('')
-  const [shareEmail, setShareEmail] = useState('')
+  const [newItem, setNewItem] =
+    useState('')
 
-  const isAdmin = auth.currentUser?.email === 'jpchagas@gmail.com'
+  const [open, setOpen] =
+    useState(false)
 
-  /** Load lists for current user and products */
-  useEffect(() => {
-    const user = auth.currentUser
-    if (!user) return
+  const [navValue, setNavValue] =
+    useState(0)
 
-    // LISTS
-    const listsQuery = query(
-      collection(db, 'sharedLists'),
-      where('members', 'array-contains', user.uid)
-    )
-
-    const unsubscribeLists = onSnapshot(listsQuery, async snapshot => {
-      let fetchedLists = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-      // If user has no lists, create one automatically
-      if (fetchedLists.length === 0) {
-        const newListRef = await addDoc(collection(db, 'sharedLists'), {
-          name: 'Minha Lista',
-          ownerId: user.uid,
-          members: [user.uid],
-          createdAt: serverTimestamp()
-        })
-
-        const newList = {
-          id: newListRef.id,
-          name: 'Minha Lista',
-          ownerId: user.uid,
-          members: [user.uid]
-        }
-
-        fetchedLists = [newList]
-      }
-
-      setLists(fetchedLists)
-
-      setSelectedList(prev => {
-
-        // nothing selected yet
-        if (!prev) return fetchedLists[0] || null
-
-        // check if previous list still exists
-        const stillExists = fetchedLists.find(l => l.id === prev.id)
-
-        // keep it if it exists, otherwise select first
-        return stillExists || fetchedLists[0] || null
-      })
+  const [alert, setAlert] =
+    useState({
+      open: false,
+      severity: 'success',
+      message: ''
     })
 
-    // PRODUCTS
-    const unsubscribeProducts = onSnapshot(
-      collection(db, 'products'),
-      snapshot => {
-        setProducts(snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })))
-      },
-      error => {
-        console.error('Products listener error:', error)
-      }
+  const [
+    createDialogOpen,
+    setCreateDialogOpen
+  ] = useState(false)
+
+  const [
+    shareDialogOpen,
+    setShareDialogOpen
+  ] = useState(false)
+
+  const [
+    newListName,
+    setNewListName
+  ] = useState('')
+
+  const [
+    shareEmail,
+    setShareEmail
+  ] = useState('')
+
+
+  const {
+    products
+  } = useProducts()
+
+
+  const {
+    lists,
+    selectedList,
+    setSelectedList,
+    createList: createShoppingList,
+    removeMember: removeListMember,
+    leaveList: leaveShoppingList,
+    shareList: shareShoppingList,
+    deleteList: deleteShoppingList,
+    clearItems: clearShoppingListItems
+  } = useShoppingLists()
+
+
+  const members =
+    useListMembers(
+      selectedList
     )
 
-    return () => {
-      unsubscribeLists()
-      unsubscribeProducts()
-    }
-  }, [])
 
-  /** Load items for selected list */
-  useEffect(() => {
-
-  if (!selectedList?.id) {
-    setItems([])
-    return
-  }
-
-  const itemsRef = collection(db,'sharedLists',selectedList.id,'items')
-
-  const unsubscribe = onSnapshot(itemsRef, snapshot =>
-    setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+  const {
+    items,
+    addItem,
+    updateAmount,
+    removeItem
+  } = useShoppingItems(
+    selectedList,
+    products
   )
 
-  return () => unsubscribe()
 
-}, [selectedList])
+  const {
+    newPassword,
+    setNewPassword,
+    passwordMessage,
+    passwordError,
+    changePassword,
+    logout
+  } = usePassword()
 
-  useEffect(()=>{
-  const loadMembers = async () => {
 
-    if(!selectedList) return
+  const isAdmin =
+    auth.currentUser?.email ===
+    'jpchagas@gmail.com'
 
-    const users = []
-
-    for(const uid of selectedList.members){
-      const snap = await getDoc(doc(db,'users',uid))
-      if(snap.exists()){
-        users.push({ id: uid, ...snap.data() })
-      }
-    }
-
-    setMembers(users)
-  }
-
-  loadMembers()
-
-},[selectedList])
 
   /** Helper functions */
 
-  const showAlert = (severity, message) => {
+  const showAlert = (
+    severity,
+    message
+  ) => {
     setAlert({
       open: true,
       severity,
@@ -174,496 +152,385 @@ function MainScreen() {
     })
   }
 
+
+  const {
+    handlePriceUpload
+  } = usePriceUpload({
+    showAlert
+  })
+
+
   const createList = async () => {
+    if (!newListName) return
 
-  const user = auth.currentUser
-  if (!user || !newListName) return
-
-  await addDoc(collection(db,'sharedLists'),{
-    name: newListName,
-    ownerId: user.uid,
-    members: [user.uid],
-    createdAt: serverTimestamp()
-  })
-
-  setNewListName('')
-  setCreateDialogOpen(false)
-
-  showAlert('success','Lista criada com sucesso!')
-}
-
-const removeMember = async (userId) => {
-
-  if (!selectedList) return
-
-  const listRef = doc(db,'sharedLists',selectedList.id)
-
-  await updateDoc(listRef,{
-    members: arrayRemove(userId)
-  })
-
-  showAlert('success','Membro removido')
-}
-
-const leaveList = async () => {
-
-  const user = auth.currentUser
-
-  if (!selectedList || !user) return
-
-  const listRef = doc(db,'sharedLists',selectedList.id)
-
-  await updateDoc(listRef,{
-    members: arrayRemove(user.uid)
-  })
-
-  showAlert('success','Você saiu da lista')
-}
-
-const shareList = async () => {
-
-  if (!shareEmail || !selectedList) return
-
-  const userQuery = query(
-    collection(db,'users'),
-    where('email','==',shareEmail)
-  )
-
-  const userSnap = await getDocs(userQuery)
-
-  if(userSnap.empty){
-    showAlert('error','Usuário não encontrado')
-    return
-  }
-
-  const userId = userSnap.docs[0].id
-
-  if(selectedList.members.includes(userId)){
-    showAlert('warning','Usuário já possui acesso')
-    return
-  }
-
-  const listRef = doc(db,'sharedLists',selectedList.id)
-
-  await updateDoc(listRef,{
-    members: arrayUnion(userId)
-  })
-
-  setShareEmail('')
-  setShareDialogOpen(false)
-
-  showAlert('success','Lista compartilhada!')
-}
-
-const deleteList = async () => {
-
-  if (!selectedList) return
-
-  const deletedId = selectedList.id
-
-  await deleteDoc(doc(db,'sharedLists',deletedId))
-
-  const remaining = lists.filter(l => l.id !== deletedId)
-
-  setSelectedList(remaining[0] || null)
-
-  showAlert('success','Lista removida')
-}
-
-  const clearItems = async () => {
-  if (!selectedList) return
-
-  const snapshot = await getDocs(
-    collection(db,'sharedLists',selectedList.id,'items')
-  )
-
-  const batch = writeBatch(db)
-
-  snapshot.forEach(docSnap=>{
-    batch.delete(docSnap.ref)
-  })
-
-  await batch.commit()
-
-  showAlert('success','Itens removidos da lista')
-}
-
-  const formatCurrency = (value) =>
-    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-  const getProductName = (productId) => {
-    const product = products.find(p => p.id === productId)
-    return product ? product.name : productId
-  }
-
-  const getProductUnit = (productId) => {
-    const product = products.find(p => p.id === productId)
-    return product ? product.unit : ''
-  }
-
-  const getDisplayUnit = (productId) =>
-    getProductUnit(productId) === 'DZ' ? 'un' : getProductUnit(productId)
-
-  const getEffectivePrice = (productId, price) =>
-    getProductUnit(productId) === 'DZ' ? price / 12 : price
-
-  const totalPrice = items.reduce((sum, item) => {
-    if (!item.price) return sum
-    const amount = item.amount || 1
-    return sum + getEffectivePrice(item.productId, item.price) * amount
-  }, 0)
-
-  const getPriceColor = (current, previous) => {
-    if (!previous) return 'white'
-    if (current > previous) return '#ffebee'
-    if (current < previous) return '#e8f5e9'
-    return 'white'
-  }
-
-  /** Functions for child components */
-  const addItem = async (newItem) => {
-  if (!newItem || !selectedList) return
-
-  let productId
-
-  // ✅ EXISTING PRODUCT
-  if (newItem.type === 'existing') {
-    productId = newItem.product.id
-  }
-
-  // ✅ NEW PRODUCT
-  if (newItem.type === 'new') {
-    const name = newItem.name.trim()
-    if (!name) return
-
-    // Optional: avoid duplicates
-    const existing = products.find(
-      (p) => p.name.toLowerCase() === name.toLowerCase()
+    await createShoppingList(
+      newListName
     )
 
-    if (existing) {
-      productId = existing.id
-    } else {
-      const docRef = await addDoc(collection(db, 'products'), {
-        name,
-        unit: null,
-        createdAt: serverTimestamp()
-      })
+    setNewListName('')
 
-      productId = docRef.id
-    }
+    setCreateDialogOpen(false)
+
+    showAlert(
+      'success',
+      'Lista criada com sucesso!'
+    )
   }
 
-  // 🚫 Safety check
-  if (!productId) return
 
-  // 🔍 Get price history (same as your logic)
-  const historyRef = collection(db, 'prices', productId, 'history')
-  const q = query(historyRef, orderBy('fileDate', 'desc'), limit(2))
-  const snapshot = await getDocs(q)
+  const removeMember = async (
+    userId
+  ) => {
+    await removeListMember(
+      userId
+    )
 
-  let currentPrice = null
-  let previousPrice = null
-  let fileDate = null
-
-  const docs = snapshot.docs
-
-  if (docs.length > 0) {
-    currentPrice = docs[0].data().average
-    fileDate = docs[0].data().fileDate
+    showAlert(
+      'success',
+      'Membro removido'
+    )
   }
 
-  if (docs.length > 1) {
-    previousPrice = docs[1].data().average
+
+  const leaveList = async () => {
+    await leaveShoppingList()
+
+    showAlert(
+      'success',
+      'Você saiu da lista'
+    )
   }
 
-  // 🧾 Add item to list
-  await addDoc(collection(db, 'sharedLists', selectedList.id, 'items'), {
-    productId,
-    price: currentPrice,
-    previousPrice,
-    amount: 1,
-    fileDate,
-    createdAt: serverTimestamp(),
-    isCustom: newItem.type === 'new'
-  })
 
-  setNewItem(null)
-  setOpen(false)
-}
-
-  const updateAmount = async (id, value) => {
-    if (!selectedList) return
-    const amount = parseFloat(value)
-    if (isNaN(amount) || amount < 0) return
-
-    await updateDoc(doc(db, 'sharedLists', selectedList.id, 'items', id), { amount })
-  }
-
-  const removeItem = async (id) => {
-    if (!selectedList) return
-    await deleteDoc(doc(db, 'sharedLists', selectedList.id, 'items', id))
-  }
-
-  const handleChangePassword = async () => {
-    setPasswordError('')
-    setPasswordMessage('')
-    try {
-      await updatePassword(auth.currentUser, newPassword)
-      setPasswordMessage('Senha alterada com sucesso!')
-      setNewPassword('')
-    } catch {
-      setPasswordError('Faça login novamente para alterar a senha.')
-    }
-  }
-
-  const handleLogout = async () => await signOut(auth)
-  /**/
-  const extractDateFromFileName = (fileName) => {
-    const match = fileName.match(/(\d{2})_(\d{2})_(\d{4})/)
-    if (!match) return null
-
-    const [_, day, month, year] = match
-    return `${year}-${month}-${day}`
-}
-  const normalizeProductId = (name) => {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, '_')
-      .replace(/[()\/]/g, '')
-  }
-
-  const handlePriceUpload = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-
-    try {
-      const fileDate = extractDateFromFileName(file.name)
-
-      if (!fileDate) {
-        showAlert('warning','Nome do arquivo inválido. Use padrão: Cotação DD_MM_AAAA.xlsx')
-        return
-      }
-
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const json = XLSX.utils.sheet_to_json(sheet)
-
-      if (!json.length) {
-        showAlert('warning','Planilha vazia.')
-        return
-      }
-
-      const requiredColumns = ['Produto', 'UND', 'MAX', 'MAIS FREQUENTE', 'MÍNIMO']
-      const fileColumns = Object.keys(json[0])
-
-      const missingColumns = requiredColumns.filter(
-        col => !fileColumns.includes(col)
+  const shareList = async () => {
+    const result =
+      await shareShoppingList(
+        shareEmail
       )
 
-      if (missingColumns.length > 0) {
-        showAlert('warning',`Colunas faltando: ${missingColumns.join(', ')}`)
-        return
-      }
-
-      const batch = writeBatch(db)
-      let updatedCount = 0
-
-      for (const row of json) {
-        const name = row['Produto']
-        if (!name) continue
-
-        const productId = normalizeProductId(name)
-
-        const max = Number(row['MAX'])
-        const min = Number(row['MÍNIMO'])
-        const average = Number(row['MAIS FREQUENTE'])
-        const unit = row['UND'] || null
-
-        if (isNaN(max) || isNaN(min) || isNaN(average)) continue
-        if (!(min <= average && average <= max)) continue
-
-        const productRef = doc(db, 'products', productId)
-        const productSnap = await getDoc(productRef)
-
-        if (!productSnap.exists()) {
-          batch.set(productRef, {
-            name,
-            unit,
-            createdAt: serverTimestamp()
-          })
-        }
-
-        const priceHistoryRef = doc(
-          db,
-          'prices',
-          productId,
-          'history',
-          fileDate
+    if (
+      !result ||
+      result.success === false
+    ) {
+      if (
+        result?.reason ===
+        'not-found'
+      ) {
+        showAlert(
+          'error',
+          'Usuário não encontrado'
         )
-
-        batch.set(priceHistoryRef, {
-          max,
-          min,
-          average,
-          fileDate,
-          uploadedAt: serverTimestamp()
-        })
-
-        updatedCount++
       }
 
-      if (updatedCount === 0) {
-        showAlert('warning','Nenhuma linha válida encontrada.')
-        return
+      if (
+        result?.reason ===
+        'already-member'
+      ) {
+        showAlert(
+          'warning',
+          'Usuário já possui acesso'
+        )
       }
 
-      await batch.commit()
-
-      showAlert('success',`${updatedCount} produtos atualizados com sucesso!`)
-    } catch (error) {
-      console.error(error)
-      showAlert('error','Erro ao processar planilha.')
+      return
     }
+
+    setShareEmail('')
+    setShareDialogOpen(false)
+
+    showAlert(
+      'success',
+      'Lista compartilhada!'
+    )
   }
-  /**/
+
+
+  const deleteList = async () => {
+    if (!selectedList) return
+
+    const deletedId =
+      selectedList.id
+
+    await deleteShoppingList()
+
+    const remaining =
+      lists.filter(
+        list =>
+          list.id !== deletedId
+      )
+
+    setSelectedList(
+      remaining[0] || null
+    )
+
+    showAlert(
+      'success',
+      'Lista removida'
+    )
+  }
+
+
+  const clearItems = async () => {
+    await clearShoppingListItems()
+
+    showAlert(
+      'success',
+      'Itens removidos da lista'
+    )
+  }
+
+
+  const totalPrice =
+    calculateTotalPrice(
+      items,
+      products
+    )
+
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', pb: 7 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#f5f5f5',
+        pb: 7
+      }}
+    >
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              flexGrow: 1
+            }}
+          >
             Xepa
           </Typography>
         </Toolbar>
       </AppBar>
 
+
       <Container sx={{ mt: 2 }}>
-        {navValue === 0 && selectedList && (
-          <>
-            <ListSelector
-              lists={lists}
-              selectedList={selectedList}
-              setSelectedList={setSelectedList}
-            />
+        {navValue === 0 &&
+          selectedList && (
+            <>
+              <ListSelector
+                lists={lists}
+                selectedList={
+                  selectedList
+                }
+                setSelectedList={
+                  setSelectedList
+                }
+              />
 
-            <ListControls
-              selectedList={selectedList}
-              members={members}
-              onCreateList={() => setCreateDialogOpen(true)}
-              onClearItems={clearItems}
-              onShareClick={() => setShareDialogOpen(true)}
-              onDeleteList={deleteList}
-              onRemoveMember={removeMember}
-              onLeaveList={leaveList}
-              currentUserId={auth.currentUser?.uid}
-            />
 
-            <ShoppingList
-              items={items}
-              getProductName={getProductName}
-              getProductUnit={getProductUnit}
-              getDisplayUnit={getDisplayUnit}
-              getEffectivePrice={getEffectivePrice}
-              updateAmount={updateAmount}
-              removeItem={removeItem}
-              getPriceColor={getPriceColor}
-              formatCurrency={formatCurrency}
-              totalPrice={totalPrice}
-              selectedList={selectedList}
-            />
-          </>
-        )}
-        
+              <ListControls
+                selectedList={
+                  selectedList
+                }
+                members={members}
+                onCreateList={() =>
+                  setCreateDialogOpen(
+                    true
+                  )
+                }
+                onClearItems={
+                  clearItems
+                }
+                onShareClick={() =>
+                  setShareDialogOpen(
+                    true
+                  )
+                }
+                onDeleteList={
+                  deleteList
+                }
+                onRemoveMember={
+                  removeMember
+                }
+                onLeaveList={
+                  leaveList
+                }
+                currentUserId={
+                  auth.currentUser?.uid
+                }
+              />
+
+
+              <ShoppingList
+                items={items}
+                getProductName={
+                  productId =>
+                    getProductName(
+                      products,
+                      productId
+                    )
+                }
+                getProductUnit={
+                  productId =>
+                    getProductUnit(
+                      products,
+                      productId
+                    )
+                }
+                getDisplayUnit={
+                  productId =>
+                    getDisplayUnit(
+                      products,
+                      productId
+                    )
+                }
+                getEffectivePrice={
+                  (
+                    productId,
+                    price
+                  ) =>
+                    getEffectivePrice(
+                      products,
+                      productId,
+                      price
+                    )
+                }
+                updateAmount={
+                  updateAmount
+                }
+                removeItem={
+                  removeItem
+                }
+                getPriceColor={
+                  getPriceColor
+                }
+                formatCurrency={
+                  formatCurrency
+                }
+                totalPrice={
+                  totalPrice
+                }
+                selectedList={
+                  selectedList
+                }
+              />
+            </>
+          )}
+
+
         {navValue === 1 && (
           <SettingsPanel
-            newPassword={newPassword}
-            setNewPassword={setNewPassword}
-            passwordError={passwordError}
-            passwordMessage={passwordMessage}
-            handleChangePassword={handleChangePassword}
-            handleLogout={handleLogout}
+            newPassword={
+              newPassword
+            }
+            setNewPassword={
+              setNewPassword
+            }
+            passwordError={
+              passwordError
+            }
+            passwordMessage={
+              passwordMessage
+            }
+            handleChangePassword={
+              changePassword
+            }
+            handleLogout={
+              logout
+            }
             isAdmin={isAdmin}
             products={products}
             addItem={addItem}
-            selectedList={selectedList}
-            handlePriceUpload={handlePriceUpload}
+            selectedList={
+              selectedList
+            }
+            handlePriceUpload={
+              handlePriceUpload
+            }
           />
         )}
+
+
         <AdBanner />
       </Container>
 
-      {navValue === 0 && <AddItemFab onClick={() => setOpen(true)} />}
+
+      {navValue === 0 && (
+        <AddItemFab
+          onClick={() =>
+            setOpen(true)
+          }
+        />
+      )}
+
+
       {selectedList && (
         <AddItemModal
           open={open}
-          onClose={() => setOpen(false)}
+          onClose={() =>
+            setOpen(false)
+          }
           products={products}
           newItem={newItem}
           setNewItem={setNewItem}
           addItem={addItem}
         />
       )}
-      <Dialog open={createDialogOpen} onClose={()=>setCreateDialogOpen(false)}>
-        <DialogTitle>Nova Lista</DialogTitle>
 
-        <DialogContent>
-          <TextField
-            label="Nome da Lista"
-            value={newListName}
-            onChange={(e)=>setNewListName(e.target.value)}
-            fullWidth
-            sx={{mt:1}}
-          />
-        </DialogContent>
 
-        <DialogActions>
-          <Button onClick={()=>setCreateDialogOpen(false)}>
-            Cancelar
-          </Button>
+      <CreateListDialog
+        open={createDialogOpen}
+        onClose={() =>
+          setCreateDialogOpen(
+            false
+          )
+        }
+        value={newListName}
+        onChange={
+          setNewListName
+        }
+        onSubmit={createList}
+      />
 
-          <Button variant="contained" onClick={createList}>
-            Criar
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={shareDialogOpen} onClose={()=>setShareDialogOpen(false)}>
-        <DialogTitle>Compartilhar Lista</DialogTitle>
 
-        <DialogContent>
-          <TextField
-            label="Email do usuário"
-            value={shareEmail}
-            onChange={(e)=>setShareEmail(e.target.value)}
-            fullWidth
-            sx={{mt:1}}
-          />
-        </DialogContent>
+      <ShareListDialog
+        open={shareDialogOpen}
+        onClose={() =>
+          setShareDialogOpen(
+            false
+          )
+        }
+        value={shareEmail}
+        onChange={setShareEmail}
+        onSubmit={shareList}
+      />
 
-        <DialogActions>
-          <Button onClick={()=>setShareDialogOpen(false)}>
-            Cancelar
-          </Button>
 
-          <Button variant="contained" onClick={shareList}>
-            Compartilhar
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <MainBottomNavigation value={navValue} onChange={setNavValue} />
+      <MainBottomNavigation
+        value={navValue}
+        onChange={setNavValue}
+      />
+
+
       <Snackbar
         open={alert.open}
         autoHideDuration={4000}
-        onClose={() => setAlert({ ...alert, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        onClose={() =>
+          setAlert({
+            ...alert,
+            open: false
+          })
+        }
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center'
+        }}
       >
         <Alert
           severity={alert.severity}
           variant="filled"
-          onClose={() => setAlert({ ...alert, open: false })}
+          onClose={() =>
+            setAlert({
+              ...alert,
+              open: false
+            })
+          }
         >
           {alert.message}
         </Alert>
@@ -671,5 +538,6 @@ const deleteList = async () => {
     </Box>
   )
 }
+
 
 export default MainScreen
