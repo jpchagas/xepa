@@ -10,8 +10,7 @@ const containerStyles = {
 }
 
 const logoStyles = {
-  width: 220,
-  maxWidth: '70vw',
+  height: 140,
   filter: 'drop-shadow(0 8px 20px rgba(0, 0, 0, 0.2))',
   animation: 'pulse 1.8s ease-in-out infinite',
 
@@ -33,7 +32,7 @@ function SplashScreen() {
     <Box sx={containerStyles}>
       <Box
         component="img"
-        src="/xepa_logo.png"
+        src="/xepa_mark.png"
         alt="Xepa Logo"
         sx={logoStyles}
       />

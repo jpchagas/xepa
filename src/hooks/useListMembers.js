@@ -1,47 +1,59 @@
+// React
 import { useEffect, useState } from 'react'
 
 // Firebase
-
-import { db } from '../services/firebase'
-
 import {
   doc,
   getDoc
 } from 'firebase/firestore'
 
+import { db } from '../services/firebase'
+
 
 function useListMembers(selectedList) {
   const [members, setMembers] = useState([])
 
+  const memberIds =
+    selectedList?.members ?? []
+
+  // Only refetch when the member ids change, not on every
+  // list snapshot.
+  const memberKey =
+    memberIds.join(',')
+
   useEffect(() => {
-    const loadMembers = async () => {
-      if (!selectedList) {
-        setMembers([])
-        return
-      }
+    if (!memberKey) return
 
-      const users = []
+    let cancelled = false
 
-      for (const uid of selectedList.members) {
-        const snap = await getDoc(
-          doc(db, 'users', uid)
+    Promise.all(
+      memberKey
+        .split(',')
+        .map(uid => getDoc(doc(db, 'users', uid)))
+    )
+      .then(snapshots => {
+        if (cancelled) return
+
+        setMembers(
+          snapshots
+            .filter(snap => snap.exists())
+            .map(snap => ({
+              id: snap.id,
+              ...snap.data()
+            }))
         )
+      })
+      .catch(console.error)
 
-        if (snap.exists()) {
-          users.push({
-            id: uid,
-            ...snap.data()
-          })
-        }
-      }
-
-      setMembers(users)
+    return () => {
+      cancelled = true
     }
+  }, [memberKey])
 
-    loadMembers()
-  }, [selectedList])
-
-  return members
+  // Hide removed members immediately, before the refetch lands.
+  return members.filter(member =>
+    memberIds.includes(member.id)
+  )
 }
 
 export default useListMembers

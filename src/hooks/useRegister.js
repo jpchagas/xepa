@@ -7,6 +7,9 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
 
 import { auth, db } from '../services/firebase'
 
+// Utils
+import { getAuthErrorMessage } from '../utils/authErrors'
+
 export default function useRegister(onSuccess) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -23,7 +26,7 @@ export default function useRegister(onSuccess) {
     try {
       const { user } = await createUserWithEmailAndPassword(
         auth,
-        email,
+        email.trim(),
         password
       )
 
@@ -36,7 +39,7 @@ export default function useRegister(onSuccess) {
 
       onSuccess()
     } catch (err) {
-      setError(err.message)
+      setError(getAuthErrorMessage(err))
     } finally {
       setLoading(false)
     }

@@ -1,540 +1,575 @@
-import { useState } from 'react'
+// React
+import { useCallback, useMemo, useState } from 'react'
 
 // Third-party
-
 import {
-  Alert,
-  AppBar,
   Box,
+  Button,
   Container,
-  Snackbar,
-  Toolbar,
+  Skeleton,
+  Stack,
   Typography
 } from '@mui/material'
 
-// Components
+// Routing
+import { useSearchParams } from 'react-router-dom'
 
-import AddItemFab from '../features/shopping/AddItemFab'
-import AddItemModal from '../features/shopping/AddItemModal'
+// Components
 import AdBanner from '../components/feedback/AdBanner'
-import CreateListDialog from '../features/shopping/CreateListDialog'
-import ListControls from '../features/shopping/ListControls'
-import ListSelector from '../features/shopping/ListSelector'
+import AppSnackbar from '../components/feedback/AppSnackbar'
+import ConfirmDialog from '../components/feedback/ConfirmDialog'
 import MainBottomNavigation from '../components/navigation/MainBottomNavigation'
+import RecipeDialog from '../features/recipes/RecipeDialog'
+import RecipesPanel from '../features/recipes/RecipesPanel'
+import ChangePasswordDialog from '../features/settings/ChangePasswordDialog'
 import SettingsPanel from '../features/settings/SettingsPanel'
-import ShareListDialog from '../features/shopping/ShareListDialog'
+import AddItemDialog from '../features/shopping/AddItemDialog'
+import AddItemFab from '../features/shopping/AddItemFab'
+import CreateListDialog from '../features/shopping/CreateListDialog'
+import ListHeader from '../features/shopping/ListHeader'
+import ListSummary from '../features/shopping/ListSummary'
+import MembersDialog from '../features/shopping/MembersDialog'
 import ShoppingList from '../features/shopping/ShoppingList'
 
 // Hooks
-
+import useAlert from '../hooks/useAlert'
+import useCeasaSync from '../hooks/useCeasaSync'
 import useListMembers from '../hooks/useListMembers'
 import usePassword from '../hooks/usePassword'
-import usePriceUpload from '../hooks/usePriceUpload'
 import useProducts from '../hooks/useProducts'
 import useShoppingItems from '../hooks/useShoppingItems'
 import useShoppingLists from '../hooks/useShoppingLists'
 
-// Firebase
-
-import { auth } from '../services/firebase'
+// Data
+import recipes, { RECIPE_CATEGORIES } from '../data/recipes'
 
 // Utils
-
 import {
+  calculateSavings,
   calculateTotalPrice,
-  formatCurrency,
-  getDisplayUnit,
-  getEffectivePrice,
-  getPriceColor,
+  getLatestFileDate,
   getProductName,
-  getProductUnit
+  normalizeText,
+  sortItemsByName
 } from '../utils/shoppingHelpers'
 
 
-function MainScreen() {
-  const [newItem, setNewItem] =
-    useState('')
+const TABS = ['list', 'recipes', 'settings']
 
-  const [open, setOpen] =
-    useState(false)
 
-  const [navValue, setNavValue] =
-    useState(0)
+const ADMIN_EMAIL = 'jpchagas@gmail.com'
 
-  const [alert, setAlert] =
-    useState({
-      open: false,
-      severity: 'success',
-      message: ''
-    })
+const GENERIC_ERROR =
+  'Algo deu errado. Verifique sua conexão e tente novamente.'
 
-  const [
-    createDialogOpen,
-    setCreateDialogOpen
-  ] = useState(false)
+const countLabel = (count, singular, plural) =>
+  `${count} ${count === 1 ? singular : plural}`
 
-  const [
-    shareDialogOpen,
-    setShareDialogOpen
-  ] = useState(false)
 
-  const [
-    newListName,
-    setNewListName
-  ] = useState('')
+function ListsPlaceholder({ failed }) {
+  if (failed) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 10, px: 3 }}>
+        <Typography variant="h6" component="p">
+          Não foi possível carregar suas listas
+        </Typography>
 
-  const [
-    shareEmail,
-    setShareEmail
-  ] = useState('')
+        <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+          Verifique sua conexão com a internet.
+        </Typography>
 
+        <Button variant="contained" onClick={() => window.location.reload()}>
+          Tentar de novo
+        </Button>
+      </Box>
+    )
+  }
+
+  return (
+    <Stack spacing={1.5} sx={{ pt: 'calc(16px + env(safe-area-inset-top))' }}>
+      <Skeleton variant="text" width="55%" height={44} />
+      <Skeleton variant="rounded" height={150} sx={{ borderRadius: '24px' }} />
+      <Skeleton variant="rounded" height={96} sx={{ borderRadius: '18px' }} />
+      <Skeleton variant="rounded" height={96} sx={{ borderRadius: '18px' }} />
+    </Stack>
+  )
+}
+
+
+function MainScreen({ user }) {
+  // The tab lives in the URL so "back" from Privacy/Contact
+  // returns to Settings.
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const tab =
+    TABS.includes(searchParams.get('tab'))
+      ? searchParams.get('tab')
+      : 'list'
+
+  const [addItemOpen, setAddItemOpen] = useState(false)
+  const [createListOpen, setCreateListOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [confirm, setConfirm] = useState(null)
+  const [openRecipe, setOpenRecipe] = useState(null)
+
+
+  const {
+    alert,
+    showAlert,
+    closeAlert
+  } = useAlert()
+
+  const showError = useCallback(
+    () => showAlert('error', GENERIC_ERROR),
+    [showAlert]
+  )
 
   const {
     products
   } = useProducts()
 
-
   const {
     lists,
+    loading: listsLoading,
     selectedList,
-    setSelectedList,
-    createList: createShoppingList,
-    removeMember: removeListMember,
-    leaveList: leaveShoppingList,
-    shareList: shareShoppingList,
-    deleteList: deleteShoppingList,
-    clearItems: clearShoppingListItems
-  } = useShoppingLists()
-
+    selectList,
+    createList,
+    removeMember,
+    leaveList,
+    shareList,
+    deleteList
+  } = useShoppingLists(user)
 
   const members =
-    useListMembers(
-      selectedList
-    )
-
+    useListMembers(selectedList)
 
   const {
     items,
+    loading: itemsLoading,
     addItem,
+    addRecipeItems,
     updateAmount,
-    removeItem
+    setItemPrice,
+    toggleChecked,
+    removeItem,
+    restoreItem,
+    clearItems,
+    removeCheckedItems
   } = useShoppingItems(
-    selectedList,
-    products
+    selectedList?.id,
+    products,
+    { onError: showError }
   )
-
 
   const {
     newPassword,
     setNewPassword,
-    passwordMessage,
     passwordError,
+    loading: passwordLoading,
     changePassword,
+    resetPasswordForm,
     logout
   } = usePassword()
 
+  const {
+    status: ceasaStatus,
+    refreshing,
+    refresh: refreshPrices
+  } = useCeasaSync()
 
-  const isAdmin =
-    auth.currentUser?.email ===
-    'jpchagas@gmail.com'
+
+  const isAdmin = user?.email === ADMIN_EMAIL
+  const isOwner = selectedList?.ownerId === user?.uid
 
 
-  /** Helper functions */
+  const productsById = useMemo(
+    () => new Map(products.map(product => [product.id, product])),
+    [products]
+  )
 
-  const showAlert = (
-    severity,
-    message
-  ) => {
-    setAlert({
-      open: true,
-      severity,
-      message
+  const productsByName = useMemo(
+    () =>
+      new Map(
+        products.map(product => [normalizeText(product.name), product])
+      ),
+    [products]
+  )
+
+  const listProductIds = useMemo(
+    () => new Set(items.map(item => item.productId)),
+    [items]
+  )
+
+  const { pendingItems, checkedItems } = useMemo(() => {
+    const sorted = sortItemsByName(items, productsById)
+
+    return {
+      pendingItems: sorted.filter(item => !item.checked),
+      checkedItems: sorted.filter(item => item.checked)
+    }
+  }, [items, productsById])
+
+  const total = calculateTotalPrice(items, productsById)
+  const cartTotal = calculateTotalPrice(checkedItems, productsById)
+  const savings = calculateSavings(items, productsById)
+  const priceDate = getLatestFileDate(items, productsById)
+
+  const getItemName = item =>
+    getProductName(productsById.get(item.productId), item.productId)
+
+
+  /** Helpers */
+
+  const changeTab = next => {
+    setSearchParams(
+      next === 'list' ? {} : { tab: next },
+      { replace: true }
+    )
+
+    window.scrollTo(0, 0)
+  }
+
+  // For awaited actions: surfaces failures instead of failing silently.
+  const runSafely = async (action, successMessage) => {
+    try {
+      await action()
+
+      if (successMessage) showAlert('success', successMessage)
+    } catch (error) {
+      console.error(error)
+      showError()
+    }
+  }
+
+  // Bulk removals get an undo instead of a confirmation.
+  const removeWithUndo = (removedItems, message) => {
+    showAlert('info', message, {
+      label: 'Desfazer',
+      onClick: () => removedItems.forEach(restoreItem)
     })
   }
 
 
-  const {
-    handlePriceUpload
-  } = usePriceUpload({
-    showAlert
-  })
+  /** Items */
 
-
-  const createList = async () => {
-    if (!newListName) return
-
-    await createShoppingList(
-      newListName
-    )
-
-    setNewListName('')
-
-    setCreateDialogOpen(false)
-
-    showAlert(
-      'success',
-      'Lista criada com sucesso!'
-    )
-  }
-
-
-  const removeMember = async (
-    userId
-  ) => {
-    await removeListMember(
-      userId
-    )
-
-    showAlert(
-      'success',
-      'Membro removido'
-    )
-  }
-
-
-  const leaveList = async () => {
-    await leaveShoppingList()
-
-    showAlert(
-      'success',
-      'Você saiu da lista'
-    )
-  }
-
-
-  const shareList = async () => {
-    const result =
-      await shareShoppingList(
-        shareEmail
-      )
-
-    if (
-      !result ||
-      result.success === false
-    ) {
-      if (
-        result?.reason ===
-        'not-found'
-      ) {
-        showAlert(
-          'error',
-          'Usuário não encontrado'
-        )
-      }
-
-      if (
-        result?.reason ===
-        'already-member'
-      ) {
-        showAlert(
-          'warning',
-          'Usuário já possui acesso'
-        )
-      }
-
-      return
+  const handleAddItem = async newItem => {
+    try {
+      return await addItem(newItem)
+    } catch (error) {
+      console.error(error)
+      showError()
+      return null
     }
+  }
 
-    setShareEmail('')
-    setShareDialogOpen(false)
+  const handleRemoveItem = item => {
+    removeItem(item)
+    removeWithUndo([item], `${getItemName(item)} removido`)
+  }
+
+  const handleRemoveChecked = () => {
+    const removed = checkedItems
+
+    removeCheckedItems()
+    removeWithUndo(
+      removed,
+      countLabel(removed.length, 'item removido', 'itens removidos')
+    )
+  }
+
+  const handleClearItems = () => {
+    const removed = items
+
+    clearItems()
+    removeWithUndo(removed, 'Lista limpa')
+  }
+
+
+  /** Lists */
+
+  const handleCreateList = name => {
+    const created = createList(name)
+
+    setCreateListOpen(false)
+
+    if (!created) return
+
+    created.write.catch(error => {
+      console.error(error)
+      showError()
+    })
+
+    showAlert('success', `Lista “${name}” criada`)
+  }
+
+  const handleInvite = async email => {
+    try {
+      const result = await shareList(email)
+
+      if (result.success) {
+        showAlert('success', `Lista compartilhada com ${email}`)
+        return null
+      }
+
+      if (result.reason === 'not-found') {
+        return 'Não encontramos uma conta com este email.'
+      }
+
+      if (result.reason === 'already-member') {
+        return 'Essa pessoa já tem acesso à lista.'
+      }
+
+      return 'Digite um email válido.'
+    } catch (error) {
+      console.error(error)
+      return 'Não foi possível compartilhar. Tente novamente.'
+    }
+  }
+
+  const handleRemoveMember = member =>
+    setConfirm({
+      title: 'Remover acesso?',
+      message: `${member.email} não poderá mais ver nem editar “${selectedList.name}”.`,
+      confirmLabel: 'Remover',
+      destructive: true,
+      onConfirm: () =>
+        runSafely(() => removeMember(member.id), 'Acesso removido')
+    })
+
+  const handleLeaveList = () =>
+    setConfirm({
+      title: `Sair de “${selectedList.name}”?`,
+      message: 'Você deixa de ver esta lista até ser convidado de novo.',
+      confirmLabel: 'Sair da lista',
+      destructive: true,
+      onConfirm: () => runSafely(leaveList, 'Você saiu da lista')
+    })
+
+  const handleDeleteList = () =>
+    setConfirm({
+      title: `Excluir “${selectedList.name}”?`,
+      message:
+        members.length > 1
+          ? 'A lista e todos os itens serão apagados para todas as pessoas com acesso.'
+          : 'A lista e todos os itens serão apagados.',
+      confirmLabel: 'Excluir',
+      destructive: true,
+      onConfirm: () => runSafely(deleteList, 'Lista excluída')
+    })
+
+
+  /** Recipes */
+
+  const handleAddRecipe = (entries, recipe) => {
+    const result = addRecipeItems(entries, recipe.name)
+
+    setOpenRecipe(null)
+
+    if (!result) return
+
+    const total = result.added + result.updated
 
     showAlert(
       'success',
-      'Lista compartilhada!'
+      `${countLabel(total, 'item', 'itens')} de ${recipe.name} na lista`,
+      { label: 'Ver lista', onClick: () => changeTab('list') }
     )
   }
 
 
-  const deleteList = async () => {
-    if (!selectedList) return
+  /** Prices */
 
-    const deletedId =
-      selectedList.id
+  const handleRefreshPrices = async () => {
+    try {
+      const { importedDates, updatedProducts } = await refreshPrices()
 
-    await deleteShoppingList()
-
-    const remaining =
-      lists.filter(
-        list =>
-          list.id !== deletedId
+      showAlert(
+        'success',
+        importedDates.length > 0
+          ? `${countLabel(importedDates.length, 'cotação importada', 'cotações importadas')} · ${updatedProducts} produtos atualizados`
+          : 'Os preços já estão atualizados'
       )
-
-    setSelectedList(
-      remaining[0] || null
-    )
-
-    showAlert(
-      'success',
-      'Lista removida'
-    )
+    } catch (error) {
+      console.error(error)
+      showAlert('error', 'Não foi possível atualizar os preços. Tente novamente.')
+    }
   }
 
 
-  const clearItems = async () => {
-    await clearShoppingListItems()
+  /** Account */
 
-    showAlert(
-      'success',
-      'Itens removidos da lista'
-    )
+  const handleChangePassword = async () => {
+    const changed = await changePassword()
+
+    if (changed) {
+      setPasswordOpen(false)
+      showAlert('success', 'Senha alterada com sucesso')
+    }
   }
 
-
-  const totalPrice =
-    calculateTotalPrice(
-      items,
-      products
-    )
+  const handleLogout = () =>
+    setConfirm({
+      title: 'Sair da conta?',
+      message: 'Suas listas continuam salvas. Entre de novo quando quiser.',
+      confirmLabel: 'Sair',
+      onConfirm: () => runSafely(logout)
+    })
 
 
   return (
     <Box
       sx={{
-        minHeight: '100vh',
-        bgcolor: '#f5f5f5',
-        pb: 7
+        minHeight: '100dvh',
+        bgcolor: 'background.default',
+        pb: 'calc(160px + env(safe-area-inset-bottom))'
       }}
     >
-      <AppBar position="static">
-        <Toolbar>
-          <Typography
-            variant="h6"
-            sx={{
-              flexGrow: 1
-            }}
-          >
-            Xepa
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-
-      <Container sx={{ mt: 2 }}>
-        {navValue === 0 &&
-          selectedList && (
+      <Container maxWidth="sm" disableGutters sx={{ px: 2 }}>
+        {tab === 'list' && (
+          selectedList ? (
             <>
-              <ListSelector
+              <ListHeader
                 lists={lists}
-                selectedList={
-                  selectedList
-                }
-                setSelectedList={
-                  setSelectedList
-                }
-              />
-
-
-              <ListControls
-                selectedList={
-                  selectedList
-                }
+                selectedList={selectedList}
                 members={members}
-                onCreateList={() =>
-                  setCreateDialogOpen(
-                    true
-                  )
-                }
-                onClearItems={
-                  clearItems
-                }
-                onShareClick={() =>
-                  setShareDialogOpen(
-                    true
-                  )
-                }
-                onDeleteList={
-                  deleteList
-                }
-                onRemoveMember={
-                  removeMember
-                }
-                onLeaveList={
-                  leaveList
-                }
-                currentUserId={
-                  auth.currentUser?.uid
-                }
+                isOwner={isOwner}
+                itemCount={items.length}
+                checkedCount={checkedItems.length}
+                onSelectList={selectList}
+                onCreateList={() => setCreateListOpen(true)}
+                onOpenMembers={() => setMembersOpen(true)}
+                onRemoveChecked={handleRemoveChecked}
+                onClearItems={handleClearItems}
+                onDeleteList={handleDeleteList}
+                onLeaveList={handleLeaveList}
               />
 
+              {items.length > 0 && (
+                <ListSummary
+                  total={total}
+                  cartTotal={cartTotal}
+                  itemCount={items.length}
+                  checkedCount={checkedItems.length}
+                  savings={savings}
+                  priceDate={priceDate}
+                />
+              )}
 
               <ShoppingList
-                items={items}
-                getProductName={
-                  productId =>
-                    getProductName(
-                      products,
-                      productId
-                    )
-                }
-                getProductUnit={
-                  productId =>
-                    getProductUnit(
-                      products,
-                      productId
-                    )
-                }
-                getDisplayUnit={
-                  productId =>
-                    getDisplayUnit(
-                      products,
-                      productId
-                    )
-                }
-                getEffectivePrice={
-                  (
-                    productId,
-                    price
-                  ) =>
-                    getEffectivePrice(
-                      products,
-                      productId,
-                      price
-                    )
-                }
-                updateAmount={
-                  updateAmount
-                }
-                removeItem={
-                  removeItem
-                }
-                getPriceColor={
-                  getPriceColor
-                }
-                formatCurrency={
-                  formatCurrency
-                }
-                totalPrice={
-                  totalPrice
-                }
-                selectedList={
-                  selectedList
-                }
+                pendingItems={pendingItems}
+                checkedItems={checkedItems}
+                productsById={productsById}
+                loading={itemsLoading}
+                onAddItem={() => setAddItemOpen(true)}
+                onToggle={toggleChecked}
+                onUpdateAmount={updateAmount}
+                onRemove={handleRemoveItem}
+                onSavePrice={setItemPrice}
               />
             </>
-          )}
+          ) : (
+            <ListsPlaceholder failed={!listsLoading} />
+          )
+        )}
 
-
-        {navValue === 1 && (
-          <SettingsPanel
-            newPassword={
-              newPassword
-            }
-            setNewPassword={
-              setNewPassword
-            }
-            passwordError={
-              passwordError
-            }
-            passwordMessage={
-              passwordMessage
-            }
-            handleChangePassword={
-              changePassword
-            }
-            handleLogout={
-              logout
-            }
-            isAdmin={isAdmin}
-            products={products}
-            addItem={addItem}
-            selectedList={
-              selectedList
-            }
-            handlePriceUpload={
-              handlePriceUpload
-            }
+        {tab === 'recipes' && (
+          <RecipesPanel
+            recipes={recipes}
+            categories={RECIPE_CATEGORIES}
+            productsById={productsById}
+            productsByName={productsByName}
+            onOpenRecipe={setOpenRecipe}
           />
         )}
 
+        {tab === 'settings' && (
+          <SettingsPanel
+            email={user?.email}
+            isAdmin={isAdmin}
+            ceasaStatus={ceasaStatus}
+            refreshing={refreshing}
+            onChangePassword={() => setPasswordOpen(true)}
+            onLogout={handleLogout}
+            onRefreshPrices={handleRefreshPrices}
+          />
+        )}
 
         <AdBanner />
       </Container>
 
 
-      {navValue === 0 && (
-        <AddItemFab
-          onClick={() =>
-            setOpen(true)
-          }
-        />
+      {tab === 'list' && selectedList && items.length > 0 && (
+        <AddItemFab onClick={() => setAddItemOpen(true)} />
       )}
 
 
       {selectedList && (
-        <AddItemModal
-          open={open}
-          onClose={() =>
-            setOpen(false)
-          }
-          products={products}
-          newItem={newItem}
-          setNewItem={setNewItem}
-          addItem={addItem}
-        />
+        <>
+          <AddItemDialog
+            open={addItemOpen}
+            onClose={() => setAddItemOpen(false)}
+            products={products}
+            items={items}
+            onAdd={handleAddItem}
+          />
+
+          <MembersDialog
+            open={membersOpen}
+            onClose={() => setMembersOpen(false)}
+            list={selectedList}
+            members={members}
+            currentUserId={user?.uid}
+            isOwner={isOwner}
+            onInvite={handleInvite}
+            onRemoveMember={handleRemoveMember}
+          />
+        </>
       )}
 
-
-      <CreateListDialog
-        open={createDialogOpen}
-        onClose={() =>
-          setCreateDialogOpen(
-            false
-          )
-        }
-        value={newListName}
-        onChange={
-          setNewListName
-        }
-        onSubmit={createList}
+      <RecipeDialog
+        recipe={openRecipe}
+        onClose={() => setOpenRecipe(null)}
+        productsById={productsById}
+        productsByName={productsByName}
+        listProductIds={listProductIds}
+        listName={selectedList?.name}
+        canAdd={!!selectedList}
+        onAdd={handleAddRecipe}
       />
 
+      <CreateListDialog
+        open={createListOpen}
+        onClose={() => setCreateListOpen(false)}
+        onSubmit={handleCreateList}
+      />
 
-      <ShareListDialog
-        open={shareDialogOpen}
-        onClose={() =>
-          setShareDialogOpen(
-            false
-          )
-        }
-        value={shareEmail}
-        onChange={setShareEmail}
-        onSubmit={shareList}
+      <ChangePasswordDialog
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+        onExited={resetPasswordForm}
+        newPassword={newPassword}
+        onPasswordChange={setNewPassword}
+        error={passwordError}
+        loading={passwordLoading}
+        onSubmit={handleChangePassword}
+      />
+
+      <ConfirmDialog
+        confirm={confirm}
+        onClose={() => setConfirm(null)}
       />
 
 
       <MainBottomNavigation
-        value={navValue}
-        onChange={setNavValue}
+        value={tab}
+        onChange={changeTab}
       />
 
-
-      <Snackbar
-        open={alert.open}
-        autoHideDuration={4000}
-        onClose={() =>
-          setAlert({
-            ...alert,
-            open: false
-          })
-        }
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center'
-        }}
-      >
-        <Alert
-          severity={alert.severity}
-          variant="filled"
-          onClose={() =>
-            setAlert({
-              ...alert,
-              open: false
-            })
-          }
-        >
-          {alert.message}
-        </Alert>
-      </Snackbar>
+      <AppSnackbar
+        alert={alert}
+        onClose={closeAlert}
+      />
     </Box>
   )
 }

@@ -1,26 +1,50 @@
-import { AppBar, Toolbar, IconButton, Typography } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useNavigate } from "react-router-dom";
+// Third-party
+import {
+  AppBar,
+  IconButton,
+  Toolbar,
+  Typography
+} from '@mui/material'
+
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
+
+// Routing
+import { useNavigate } from 'react-router-dom'
+
 
 export default function PageAppBar({ title }) {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+
+  // Opened directly (shared link, refresh): there's no in-app page
+  // to go back to, so go home instead of leaving the site.
+  const goBack = () => {
+    if (window.history.state?.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/', { replace: true })
+    }
+  }
 
   return (
-    <AppBar position="static" color="primary" elevation={1}>
+    <AppBar
+      position="sticky"
+      sx={{ pt: 'env(safe-area-inset-top)' }}
+    >
       <Toolbar>
         <IconButton
           edge="start"
           color="inherit"
-          onClick={() => navigate(-1)}
-          sx={{ mr: 2 }}
+          onClick={goBack}
+          aria-label="Voltar"
+          sx={{ mr: 1 }}
         >
-          <ArrowBackIcon />
+          <ArrowBackIosNewIcon fontSize="small" />
         </IconButton>
 
-        <Typography variant="h6" component="div">
+        <Typography variant="h6" component="h1">
           {title}
         </Typography>
       </Toolbar>
     </AppBar>
-  );
+  )
 }

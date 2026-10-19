@@ -68,7 +68,7 @@ function AppRoutes({ user, location }) {
           path="/main"
           element={
             <PrivateRoute user={user}>
-              <MainScreen />
+              <MainScreen user={user} />
             </PrivateRoute>
           }
         />
@@ -83,6 +83,13 @@ function AppRoutes({ user, location }) {
         <Route
           path="/contact"
           element={<Contact />}
+        />
+
+        {/* Unknown paths */}
+
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </AnimatePresence>

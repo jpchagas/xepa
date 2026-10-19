@@ -5,12 +5,16 @@ import {
   initializeFirestore,
   persistentLocalCache,
 } from 'firebase/firestore'
+import { getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDJhM3gSCTi9fqjWUD7Qe2DlSskifqvdUY",
+  authDomain: "xepa-6fa32.firebaseapp.com",
+  projectId: "xepa-6fa32",
+  storageBucket: "xepa-6fa32.firebasestorage.app",
+  messagingSenderId: "676820100070",
+  appId: "1:676820100070:web:014db0f1f7fda130ff2c27",
+  measurementId: "G-Z87YD1B5VB"
 }
 
 const app = initializeApp(firebaseConfig)
@@ -20,6 +24,9 @@ export const auth = getAuth(app)
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache(),
 })
+
+// Same region as functions/src/index.js.
+export const functions = getFunctions(app, 'southamerica-east1')
 
 export default app
 

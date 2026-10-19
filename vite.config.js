@@ -7,24 +7,33 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'xepa_logo.png'],
+      includeAssets: [
+        'favicon.png',
+        'apple-touch-icon.png',
+        'xepa_mark.png'
+      ],
       manifest: {
         name: 'Xepa - Lista de Compras',
         short_name: 'Xepa',
-        theme_color: '#FFD400', // 🔥 brand yellow
-        background_color: '#FFFFFF',
+        description: 'Lista de compras colaborativa com preços do CEASA/RS.',
+        lang: 'pt-BR',
+        start_url: '/',
+        theme_color: '#F5F4F0',
+        background_color: '#FFD400', // brand yellow on the launch screen
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: '/xepa_logo_192.png',
+            src: '/icon-192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
-            src: '/xepa_logo_512.png',
+            src: '/icon-512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }

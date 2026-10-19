@@ -1,7 +1,7 @@
 // React
 import { useEffect, useState } from 'react'
 
-export default function useSplashScreen(duration = 2000) {
+export default function useSplashScreen(duration = 1200) {
   const [finished, setFinished] = useState(false)
 
   useEffect(() => {

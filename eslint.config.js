@@ -8,6 +8,7 @@ export default defineConfig([
   globalIgnores(['dist']),
   {
     files: ['**/*.{js,jsx}'],
+    ignores: ['functions/**'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -23,7 +24,21 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Core ESLint doesn't see JSX usage: <Component />, <motion.div />,
+      // or components received as props ({ icon: Icon }).
+      'no-unused-vars': ['error', {
+        varsIgnorePattern: '^([A-Z_]|motion$)',
+        argsIgnorePattern: '^[A-Z_]',
+      }],
+    },
+  },
+  {
+    files: ['functions/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
     },
   },
 ])

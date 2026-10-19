@@ -1,298 +1,284 @@
-import {
-  useEffect,
-  useState
-} from 'react'
+// React
+import { useState } from 'react'
 
 // Third-party
-
 import {
   Box,
   Button,
   Collapse,
   IconButton,
-  ListItem,
-  ListItemText,
-  MenuItem,
-  TextField
+  Paper,
+  Typography
 } from '@mui/material'
+import {
+  motion,
+  useMotionValue,
+  useTransform
+} from 'framer-motion'
 
-import DeleteIcon from '@mui/icons-material/Delete'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
+import SellOutlinedIcon from '@mui/icons-material/SellOutlined'
 
-// Hooks
+// Components
+import PriceEditor from './PriceEditor'
+import PriceTrendBadge from './PriceTrendBadge'
+import QuantityStepper from './QuantityStepper'
 
-import useShoppingItemPrice from '../../hooks/useShoppingItemPrice'
+// Utils
+import {
+  formatCurrency,
+  formatShortDate,
+  getDisplayUnit,
+  getEffectivePrice,
+  getItemAmount,
+  getItemPricing,
+  getItemTotal,
+  getPriceTrend,
+  getProductName,
+  isStalePrice
+} from '../../utils/shoppingHelpers'
+
+
+// Swipe further than this (px) to delete.
+const SWIPE_DELETE_OFFSET = -120
 
 
 function ShoppingListItem({
   item,
-  getProductName,
-  getProductUnit,
-  getDisplayUnit,
-  getEffectivePrice,
-  updateAmount,
-  removeItem,
-  getPriceColor,
-  formatCurrency,
-  listId
+  product,
+  onToggle,
+  onUpdateAmount,
+  onRemove,
+  onSavePrice
 }) {
-  const [open, setOpen] =
-    useState(false)
+  const [editingPrice, setEditingPrice] = useState(false)
 
-  const [price, setPrice] =
-    useState('')
+  const x = useMotionValue(0)
+  const deleteHintOpacity = useTransform(x, [-72, -16], [1, 0])
 
-  const [unit, setUnit] =
-    useState('')
+  const name = getProductName(product, item.productId)
+  const unit = product?.unit
+  const displayUnit = getDisplayUnit(unit)
+  const checked = !!item.checked
 
-  const [initialized, setInitialized] =
-    useState(false)
+  const pricing = getItemPricing(item, product)
+  const hasPrice = !!pricing.price
 
-  const [localAmount, setLocalAmount] =
-    useState('')
+  const unitPrice =
+    hasPrice ? getEffectivePrice(unit, pricing.price) : 0
 
+  const trend =
+    getPriceTrend(pricing.price, pricing.previousPrice)
 
-  // Get the product unit before using it
-  // in useShoppingItemPrice.
+  const priceLabel = hasPrice
+    ? `${formatCurrency(unitPrice)}${displayUnit ? `/${displayUnit}` : ''}`
+    : 'Sem preço do CEASA'
 
-  const unitValue =
-    getProductUnit(
-      item.productId
-    )
-
-
-  const {
-    savePrice
-  } = useShoppingItemPrice(
-    listId,
-    item,
-    unitValue
-  )
-
-
-  const effectivePrice =
-    getEffectivePrice(
-      item.productId,
-      item.price
-    )
-
-  const amount =
-    item.amount ?? 1
-
-  const itemTotal =
-    effectivePrice * amount
-
-  const hasPrice =
-    !!item.price
-
-
-  useEffect(() => {
-    setLocalAmount(
-      item.amount ?? ''
-    )
-  }, [item.amount])
-
-
-  // Auto-open editor for custom items
-
-  useEffect(() => {
-    if (!initialized) {
-      if (
-        !item.price ||
-        !unitValue
-      ) {
-        setOpen(true)
-      }
-
-      setInitialized(true)
-    }
-  }, [
-    item.price,
-    unitValue,
-    initialized
-  ])
-
-
-  const handleSave = async () => {
-    await savePrice(
-      price,
-      unit
-    )
-
-    setOpen(false)
-    setPrice('')
-    setUnit('')
+  const handleSavePrice = (price, newUnit) => {
+    onSavePrice(item, price, newUnit)
+    setEditingPrice(false)
   }
 
-
   return (
-    <>
-      <ListItem
-        key={item.id}
-        sx={{
-          backgroundColor:
-            getPriceColor(
-              item.price,
-              item.previousPrice
-            ),
-          mb: 1,
-          borderRadius: 1,
-          flexDirection: 'column',
-          alignItems: 'flex-start'
+    <Box
+      sx={{
+        position: 'relative',
+        borderRadius: '18px',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Revealed while swiping left */}
+      <motion.div
+        aria-hidden
+        style={{
+          opacity: deleteHintOpacity,
+          position: 'absolute',
+          inset: 0
         }}
-        secondaryAction={
-          <IconButton
-            onClick={() =>
-              removeItem(item.id)
-            }
-          >
-            <DeleteIcon />
-          </IconButton>
-        }
       >
         <Box
-          display="flex"
-          alignItems="center"
-          width="100%"
-        >
-          <TextField
-            type="number"
-            size="small"
-            label="Qtd"
-            value={localAmount}
-            sx={{
-              width: 90,
-              mr: 2
-            }}
-            inputProps={{
-              step: 0.1,
-              min: 0,
-              inputMode: 'decimal'
-            }}
-            onChange={event => {
-              const value =
-                event.target.value
-
-              // Allow empty state
-
-              if (value === '') {
-                setLocalAmount('')
-                return
-              }
-
-              setLocalAmount(value)
-            }}
-            onBlur={() => {
-              if (
-                localAmount === ''
-              ) {
-                return
-              }
-
-              updateAmount(
-                item.id,
-                Number(localAmount)
-              )
-            }}
-          />
-
-
-          <ListItemText
-            primary={
-              getProductName(
-                item.productId
-              )
-            }
-            secondary={
-              hasPrice
-                ? `Preço médio: ${formatCurrency(
-                    effectivePrice
-                  )} (${getDisplayUnit(
-                    item.productId
-                  )}) • Total: ${formatCurrency(
-                    itemTotal
-                  )}`
-                : 'Sem preço disponível'
-            }
-          />
-        </Box>
-
-
-        {!hasPrice && (
-          <Button
-            size="small"
-            onClick={() =>
-              setOpen(!open)
-            }
-          >
-            Adicionar preço
-          </Button>
-        )}
-
-
-        <Collapse
-          in={open}
-          style={{
-            width: '100%'
+          sx={{
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 1,
+            pr: 3,
+            bgcolor: 'error.main',
+            color: 'error.contrastText',
+            fontWeight: 700
           }}
         >
-          <Box
-            display="flex"
-            gap={1}
-            mt={2}
-          >
-            <TextField
-              label="Preço"
-              type="number"
-              size="small"
-              value={price}
-              onChange={event =>
-                setPrice(
-                  event.target.value
-                )
-              }
-              fullWidth
-            />
+          <DeleteOutlineIcon />
+          Remover
+        </Box>
+      </motion.div>
 
-
-            <TextField
-              select
-              label="Unidade"
-              size="small"
-              value={unit}
-              onChange={event =>
-                setUnit(
-                  event.target.value
-                )
+      <motion.div
+        drag={editingPrice ? false : 'x'}
+        dragDirectionLock
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={{ left: 0.55, right: 0 }}
+        dragSnapToOrigin
+        style={{ x, position: 'relative' }}
+        onDragEnd={(_event, info) => {
+          if (
+            info.offset.x < SWIPE_DELETE_OFFSET ||
+            info.velocity.x < -900
+          ) {
+            onRemove(item)
+          }
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            p: 1.5,
+            pl: 0.75,
+            borderRadius: '18px',
+            border: 1,
+            borderColor: 'divider',
+            transition: 'opacity 200ms ease',
+            opacity: checked ? 0.62 : 1
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+            <IconButton
+              onClick={() => onToggle(item)}
+              aria-label={
+                checked
+                  ? `Desmarcar ${name}`
+                  : `Marcar ${name} como no carrinho`
               }
               sx={{
-                width: 100
+                mt: -0.5,
+                color: checked ? 'success.main' : 'text.disabled'
               }}
             >
-              <MenuItem value="kg">
-                kg
-              </MenuItem>
+              {checked ? (
+                <CheckCircleIcon />
+              ) : (
+                <RadioButtonUncheckedIcon />
+              )}
+            </IconButton>
 
-              <MenuItem value="un">
-                un
-              </MenuItem>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Box
+                onClick={() => onToggle(item)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 1,
+                  cursor: 'pointer'
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflowWrap: 'anywhere',
+                    textDecoration: checked ? 'line-through' : 'none'
+                  }}
+                >
+                  {name}
+                </Typography>
 
-              <MenuItem value="L">
-                L
-              </MenuItem>
-            </TextField>
+                {hasPrice && (
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 800,
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {formatCurrency(getItemTotal(item, product))}
+                  </Typography>
+                )}
+              </Box>
 
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  columnGap: 0.75,
+                  rowGap: 0.25,
+                  mt: 0.25
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  {priceLabel}
+                </Typography>
 
-            <Button
-              onClick={handleSave}
-            >
-              Salvar
-            </Button>
+                <PriceTrendBadge trend={trend} />
+
+                {hasPrice && isStalePrice(pricing.fileDate) && (
+                  <Typography variant="caption" color="warning.dark">
+                    cotação de {formatShortDate(pricing.fileDate)}
+                  </Typography>
+                )}
+              </Box>
+
+              {item.recipes?.length > 0 && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mt: 0.25 }}
+                >
+                  Para: {item.recipes.join(', ')}
+                </Typography>
+              )}
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 1,
+                  mt: 1.25
+                }}
+              >
+                {!hasPrice && !checked ? (
+                  <Button
+                    size="small"
+                    variant={editingPrice ? 'text' : 'outlined'}
+                    startIcon={!editingPrice && <SellOutlinedIcon />}
+                    onClick={() => setEditingPrice(open => !open)}
+                    sx={{ borderRadius: 99 }}
+                  >
+                    {editingPrice ? 'Cancelar' : 'Informar preço'}
+                  </Button>
+                ) : (
+                  <span />
+                )}
+
+                <QuantityStepper
+                  value={getItemAmount(item)}
+                  unit={displayUnit}
+                  onChange={amount => onUpdateAmount(item.id, amount)}
+                  onRemove={() => onRemove(item)}
+                />
+              </Box>
+
+              <Collapse
+                in={editingPrice && !hasPrice}
+                unmountOnExit
+              >
+                <PriceEditor
+                  needsUnit={!unit}
+                  onSave={handleSavePrice}
+                />
+              </Collapse>
+            </Box>
           </Box>
-        </Collapse>
-      </ListItem>
-    </>
+        </Paper>
+      </motion.div>
+    </Box>
   )
 }
-
 
 export default ShoppingListItem

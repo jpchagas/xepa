@@ -1,25 +1,44 @@
+// React
 import { useState } from 'react'
 
 // Firebase
-
 import {
   signOut,
   updatePassword
 } from 'firebase/auth'
 
 // Services
-
 import { auth } from '../services/firebase'
+
+// Utils
+import {
+  getAuthErrorMessage,
+  MIN_PASSWORD_LENGTH
+} from '../utils/authErrors'
 
 
 function usePassword() {
   const [newPassword, setNewPassword] = useState('')
-  const [passwordMessage, setPasswordMessage] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const [loading, setLoading] = useState(false)
 
+  const resetPasswordForm = () => {
+    setNewPassword('')
+    setPasswordError('')
+  }
+
+  // Returns true when the password was changed.
   const changePassword = async () => {
     setPasswordError('')
-    setPasswordMessage('')
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(
+        `A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+      )
+      return false
+    }
+
+    setLoading(true)
 
     try {
       await updatePassword(
@@ -27,15 +46,20 @@ function usePassword() {
         newPassword
       )
 
-      setPasswordMessage(
-        'Senha alterada com sucesso!'
+      setNewPassword('')
+
+      return true
+    } catch (error) {
+      setPasswordError(
+        getAuthErrorMessage(
+          error,
+          'Por segurança, saia e entre novamente para alterar a senha.'
+        )
       )
 
-      setNewPassword('')
-    } catch {
-      setPasswordError(
-        'Faça login novamente para alterar a senha.'
-      )
+      return false
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -46,9 +70,10 @@ function usePassword() {
   return {
     newPassword,
     setNewPassword,
-    passwordMessage,
     passwordError,
+    loading,
     changePassword,
+    resetPasswordForm,
     logout
   }
 }

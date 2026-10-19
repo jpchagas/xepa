@@ -1,34 +1,38 @@
-// Material UI
+// Third-party
 import {
-  Box,
   Paper,
+  Typography
 } from '@mui/material'
 
-function AuthCard({ children }) {
+
+function AuthCard({ title, subtitle, children }) {
   return (
     <Paper
       elevation={0}
       sx={{
-        p: 4,
-        width: '100%',
-        maxWidth: 360,
-        borderRadius: 3,
-        background: 'var(--color-white)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+        p: { xs: 3, sm: 4 },
+        borderRadius: '24px',
+        boxShadow: '0 24px 60px rgba(22, 22, 26, 0.10)'
       }}
     >
-      <Box
-        component="img"
-        src="/xepa_logo.png"
-        alt="Xepa Logo"
-        sx={{
-          width: 80,
-          display: 'block',
-          mx: 'auto',
-          mb: 2,
-          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.1))',
-        }}
-      />
+      {title && (
+        <Typography
+          component="h1"
+          variant="h5"
+        >
+          {title}
+        </Typography>
+      )}
+
+      {subtitle && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 0.5 }}
+        >
+          {subtitle}
+        </Typography>
+      )}
 
       {children}
     </Paper>

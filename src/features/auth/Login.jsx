@@ -1,25 +1,18 @@
-// React
-import { useEffect, useState } from 'react'
+// Third-party
+import { Button, Typography } from '@mui/material'
 
 // Routing
 import { useNavigate } from 'react-router-dom'
 
-// Third-party
-import {
-  Fade,
-} from '@mui/material'
-
+// Components
 import AuthLayout from './AuthLayout'
+import LoginForm from './LoginForm'
 
 // Hooks
 import useLogin from '../../hooks/useLogin'
 
-// Components
-import LoginForm from './LoginForm'
 
 function Login() {
-  const [visible, setVisible] = useState(false)
-
   const navigate = useNavigate()
 
   const {
@@ -32,40 +25,36 @@ function Login() {
     login,
   } = useLogin(() => navigate('/main'))
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setVisible(true)
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-return (
-  <AuthLayout>
-    <Fade in={visible} timeout={600}>
-      <div
-        style={{
-          transform: visible
-            ? 'translateY(0)'
-            : 'translateY(20px)',
-          transition: 'transform 600ms ease',
-        }}
-      >
-        <LoginForm
-          email={email}
-          password={password}
-          error={error}
-          loading={loading}
-          onEmailChange={setEmail}
-          onPasswordChange={setPassword}
-          onSubmit={login}
-          onRegister={() => navigate('/register')}
-          onForgotPassword={() => navigate('/forgot-password')}
-        />
-      </div>
-    </Fade>
-  </AuthLayout>
-)
+  return (
+    <AuthLayout
+      title="Bem-vindo de volta"
+      subtitle="Entre para ver suas listas."
+      footer={
+        <Typography variant="body2" color="text.secondary">
+          Ainda não tem conta?{' '}
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => navigate('/register')}
+            sx={{ fontWeight: 800, verticalAlign: 'baseline' }}
+          >
+            Criar conta grátis
+          </Button>
+        </Typography>
+      }
+    >
+      <LoginForm
+        email={email}
+        password={password}
+        error={error}
+        loading={loading}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={login}
+        onForgotPassword={() => navigate('/forgot-password')}
+      />
+    </AuthLayout>
+  )
 }
 
 export default Login

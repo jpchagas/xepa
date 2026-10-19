@@ -1,70 +1,91 @@
+// Third-party
 import {
   Alert,
+  Box,
   Button,
-  Paper,
+  CircularProgress,
+  Stack,
   TextField,
   Typography,
 } from '@mui/material'
 
-import AuthCard from './AuthCard'
+import MarkEmailReadOutlinedIcon from '@mui/icons-material/MarkEmailReadOutlined'
+
 
 function ForgotPasswordForm({
   email,
-  message,
+  sent,
+  loading,
   error,
   onEmailChange,
   onSubmit,
 }) {
-  return (
-<AuthCard>
-  <Typography
-    variant="h6"
-    mb={2}
-    textAlign="center"
-    sx={{
-      fontWeight: 700,
-    }}
-  >
-    Recuperar Senha
-  </Typography>
-
-  <form
-    onSubmit={onSubmit}
-    style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem',
-    }}
-  >
-        <TextField
-          label="Email"
-          type="email"
-          required
-          fullWidth
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
-        />
-
-        {error && (
-          <Alert severity="error">
-            {error}
-          </Alert>
-        )}
-
-        {message && (
-          <Alert severity="success">
-            {message}
-          </Alert>
-        )}
-
-        <Button
-          type="submit"
-          variant="contained"
+  if (sent) {
+    return (
+      <Box sx={{ mt: 2.5, textAlign: 'center' }}>
+        <Box
+          sx={{
+            width: 64,
+            height: 64,
+            mx: 'auto',
+            mb: 2,
+            display: 'grid',
+            placeItems: 'center',
+            borderRadius: '50%',
+            bgcolor: 'success.light',
+            color: 'success.dark'
+          }}
         >
-          Enviar Email
-        </Button>
-  </form>
-</AuthCard>
+          <MarkEmailReadOutlinedIcon fontSize="large" />
+        </Box>
+
+        <Typography color="text.secondary">
+          Se existir uma conta para <b>{email.trim()}</b>, você vai
+          receber um link para redefinir a senha. Confira também a
+          caixa de spam.
+        </Typography>
+      </Box>
+    )
+  }
+
+  return (
+    <Stack
+      component="form"
+      onSubmit={onSubmit}
+      spacing={2}
+      sx={{ mt: 3 }}
+    >
+      <TextField
+        label="Email"
+        type="email"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => onEmailChange(e.target.value)}
+        slotProps={{ htmlInput: { inputMode: 'email' } }}
+        required
+        fullWidth
+      />
+
+      {error && (
+        <Alert severity="error">
+          {error}
+        </Alert>
+      )}
+
+      <Button
+        type="submit"
+        variant="contained"
+        size="large"
+        fullWidth
+        disabled={loading}
+      >
+        {loading ? (
+          <CircularProgress size={24} color="inherit" />
+        ) : (
+          'Enviar link'
+        )}
+      </Button>
+    </Stack>
   )
 }
 

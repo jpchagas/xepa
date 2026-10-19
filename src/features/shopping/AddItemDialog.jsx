@@ -1,0 +1,375 @@
+// React
+import {
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
+
+// Third-party
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Collapse,
+  Dialog,
+  IconButton,
+  InputAdornment,
+  List,
+  ListItemButton,
+  ListItemText,
+  Slide,
+  TextField,
+  Typography,
+  useMediaQuery
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import AddIcon from '@mui/icons-material/Add'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CloseIcon from '@mui/icons-material/Close'
+import SearchIcon from '@mui/icons-material/Search'
+
+// Utils
+import {
+  formatDecimal,
+  getDisplayUnit,
+  getItemAmount,
+  normalizeText
+} from '../../utils/shoppingHelpers'
+
+
+const MAX_RESULTS = 80
+
+const SlideUp = forwardRef(function SlideUp(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />
+})
+
+const formatUnit = unit => {
+  if (!unit) return null
+  if (unit === 'DZ') return 'por dúzia'
+
+  return `por ${getDisplayUnit(unit)}`
+}
+
+
+function AddItemDialog({
+  open,
+  onClose,
+  products,
+  items,
+  onAdd
+}) {
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const inputRef = useRef(null)
+
+  const [search, setSearch] = useState('')
+  const [pendingKey, setPendingKey] = useState(null)
+  const [lastAdded, setLastAdded] = useState(null)
+
+
+  // Hide the "added" confirmation after a moment.
+  useEffect(() => {
+    if (!lastAdded) return
+
+    const timer = setTimeout(() => setLastAdded(null), 2200)
+
+    return () => clearTimeout(timer)
+  }, [lastAdded])
+
+
+  const amountsByProduct = useMemo(
+    () =>
+      new Map(
+        items.map(item => [item.productId, getItemAmount(item)])
+      ),
+    [items]
+  )
+
+  const sortedProducts = useMemo(
+    () =>
+      products
+        .filter(product => product.name)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    [products]
+  )
+
+  const query = normalizeText(search)
+
+  // Names starting with the query first, then the rest.
+  const results = useMemo(() => {
+    if (!query) return sortedProducts
+
+    const startsWith = []
+    const contains = []
+
+    sortedProducts.forEach(product => {
+      const name = normalizeText(product.name)
+
+      if (name.startsWith(query)) startsWith.push(product)
+      else if (name.includes(query)) contains.push(product)
+    })
+
+    return [...startsWith, ...contains]
+  }, [query, sortedProducts])
+
+  const exactMatch = results.find(
+    product => normalizeText(product.name) === query
+  )
+
+  const canCreate = !!query && !exactMatch
+
+
+  const add = async (newItem, key, name) => {
+    if (pendingKey === key) return
+
+    setPendingKey(key)
+
+    try {
+      const result = await onAdd(newItem)
+
+      if (result) {
+        setLastAdded({ name, status: result.status, at: Date.now() })
+        setSearch('')
+      }
+    } finally {
+      setPendingKey(current => (current === key ? null : current))
+      inputRef.current?.focus()
+    }
+  }
+
+  const addProduct = product =>
+    add({ type: 'existing', product }, product.id, product.name)
+
+  const addNewProduct = () => {
+    const name = search.trim()
+
+    add({ type: 'new', name }, 'new', name)
+  }
+
+  // Enter adds the exact match, or creates the product when
+  // nothing matches. Partial matches need a tap.
+  const handleKeyDown = event => {
+    if (event.key !== 'Enter' || !query) return
+
+    event.preventDefault()
+
+    if (exactMatch) addProduct(exactMatch)
+    else if (results.length === 0) addNewProduct()
+  }
+
+  const handleExited = () => {
+    setSearch('')
+    setLastAdded(null)
+  }
+
+  const visibleResults = results.slice(0, MAX_RESULTS)
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="sm"
+      slots={{ transition: SlideUp }}
+      slotProps={{
+        transition: { onExited: handleExited },
+        paper: {
+          sx: {
+            bgcolor: 'background.default',
+            height: { sm: '80vh' }
+          }
+        }
+      }}
+    >
+      <Box
+        sx={{
+          px: 2,
+          pt: fullScreen ? 'calc(12px + env(safe-area-inset-top))' : 2,
+          pb: 1.5,
+          borderBottom: 1,
+          borderColor: 'divider'
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <Typography variant="h6" component="h2">
+            Adicionar itens
+          </Typography>
+
+          <Button variant="contained" size="small" onClick={onClose}>
+            Concluir
+          </Button>
+        </Box>
+
+        <TextField
+          inputRef={inputRef}
+          autoFocus
+          fullWidth
+          placeholder="Buscar ou criar produto"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+          onKeyDown={handleKeyDown}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: search && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    aria-label="Limpar busca"
+                    onClick={() => {
+                      setSearch('')
+                      inputRef.current?.focus()
+                    }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              )
+            },
+            htmlInput: {
+              enterKeyHint: 'done',
+              autoCorrect: 'off',
+              'aria-label': 'Buscar produto'
+            }
+          }}
+          sx={{ mt: 1.5 }}
+        />
+
+        <Collapse in={!!lastAdded}>
+          <Box
+            role="status"
+            sx={{
+              mt: 1.25,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.75,
+              color: 'success.dark'
+            }}
+          >
+            <CheckCircleIcon fontSize="small" />
+
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {lastAdded?.status === 'incremented'
+                ? `+1 ${lastAdded?.name} na lista`
+                : `${lastAdded?.name} adicionado à lista`}
+            </Typography>
+          </Box>
+        </Collapse>
+      </Box>
+
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          px: 1,
+          pt: 1,
+          pb: 'calc(16px + env(safe-area-inset-bottom))'
+        }}
+      >
+        <List disablePadding>
+          {canCreate && (
+            <ListItemButton
+              onClick={addNewProduct}
+              sx={{ mb: 0.5, bgcolor: 'background.paper' }}
+            >
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  mr: 1.5,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: '50%',
+                  bgcolor: 'primary.main',
+                  flexShrink: 0
+                }}
+              >
+                {pendingKey === 'new' ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <AddIcon fontSize="small" />
+                )}
+              </Box>
+
+              <ListItemText
+                primary={<>Criar “<b>{search.trim()}</b>”</>}
+                secondary="Novo produto, sem preço do CEASA"
+              />
+            </ListItemButton>
+          )}
+
+          {visibleResults.map(product => {
+            const amount = amountsByProduct.get(product.id)
+
+            return (
+              <ListItemButton
+                key={product.id}
+                onClick={() => addProduct(product)}
+              >
+                <ListItemText
+                  primary={product.name}
+                  secondary={formatUnit(product.unit)}
+                  slotProps={{
+                    primary: { sx: { fontWeight: 600 } }
+                  }}
+                />
+
+                {pendingKey === product.id ? (
+                  <CircularProgress size={22} />
+                ) : amount !== undefined ? (
+                  <Chip
+                    size="small"
+                    label={`${formatDecimal(amount)} na lista`}
+                    sx={{ bgcolor: 'primary.main' }}
+                  />
+                ) : (
+                  <AddCircleOutlineIcon color="action" />
+                )}
+              </ListItemButton>
+            )
+          })}
+        </List>
+
+        {results.length > MAX_RESULTS && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', textAlign: 'center', py: 2 }}
+          >
+            Mostrando {MAX_RESULTS} de {results.length} produtos.
+            Digite para refinar.
+          </Typography>
+        )}
+
+        {!query && results.length === 0 && (
+          <Typography
+            color="text.secondary"
+            sx={{ textAlign: 'center', py: 6, px: 3 }}
+          >
+            Nenhum produto cadastrado ainda. Digite um nome para criar
+            o primeiro.
+          </Typography>
+        )}
+      </Box>
+    </Dialog>
+  )
+}
+
+export default AddItemDialog

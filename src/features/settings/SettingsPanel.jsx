@@ -1,157 +1,219 @@
+// Third-party
 import {
-  Alert,
   Box,
-  Button,
+  CircularProgress,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   Paper,
-  TextField,
   Typography
 } from '@mui/material'
 
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import LogoutIcon from '@mui/icons-material/Logout'
+import MailOutlineIcon from '@mui/icons-material/MailOutline'
+import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined'
+import SyncIcon from '@mui/icons-material/Sync'
+
+// Routing
 import { useNavigate } from 'react-router-dom'
+
+// Components
+import UserAvatar from '../../components/display/UserAvatar'
+
+// Utils
+import { formatShortDate } from '../../utils/shoppingHelpers'
+
+
+const formatDateTime = timestamp =>
+  timestamp?.toDate
+    ? new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(timestamp.toDate())
+    : ''
+
+// `status` is the meta/ceasa doc written by the import function.
+function describeCeasaStatus(status) {
+  if (!status) return 'Nenhuma importação automática ainda'
+
+  if (status.lastStatus === 'error') {
+    return `Última tentativa falhou em ${formatDateTime(status.lastRunAt)}`
+  }
+
+  return [
+    status.latestFileDate &&
+      `Cotação de ${formatShortDate(status.latestFileDate)}`,
+    status.lastRunAt &&
+      `verificado em ${formatDateTime(status.lastRunAt)}`
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+
+function SettingsSection({ title, children }) {
+  return (
+    <Box component="section" sx={{ mt: 3 }}>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        component="h2"
+        sx={{ display: 'block', px: 1, mb: 0.75 }}
+      >
+        {title}
+      </Typography>
+
+      <Paper
+        elevation={0}
+        sx={{ borderRadius: '18px', border: 1, borderColor: 'divider' }}
+      >
+        <List disablePadding sx={{ p: 0.75 }}>
+          {children}
+        </List>
+      </Paper>
+    </Box>
+  )
+}
+
+
+function SettingsRow({
+  icon,
+  label,
+  description,
+  onClick,
+  danger,
+  trailing,
+  ...props
+}) {
+  return (
+    <ListItemButton
+      onClick={onClick}
+      sx={{ py: 1.25, color: danger ? 'error.main' : 'inherit' }}
+      {...props}
+    >
+      <ListItemIcon sx={{ minWidth: 44, color: 'inherit' }}>
+        {icon}
+      </ListItemIcon>
+
+      <ListItemText
+        primary={label}
+        secondary={description}
+        slotProps={{ primary: { sx: { fontWeight: 600 } } }}
+      />
+
+      {trailing ?? (
+        !danger && <ChevronRightIcon sx={{ color: 'text.disabled' }} />
+      )}
+    </ListItemButton>
+  )
+}
 
 
 function SettingsPanel({
-  newPassword,
-  setNewPassword,
-  passwordError,
-  passwordMessage,
-  handleChangePassword,
-  handleLogout,
+  email,
   isAdmin,
-  handlePriceUpload
+  ceasaStatus,
+  refreshing,
+  onChangePassword,
+  onLogout,
+  onRefreshPrices
 }) {
   const navigate = useNavigate()
 
-
   return (
-    <Paper
-      sx={{
-        p: 3,
-        minHeight: '60vh'
-      }}
-    >
-      <Typography
-        variant="h6"
-        mb={2}
-      >
-        Configurações
+    <Box sx={{ pt: 'calc(16px + env(safe-area-inset-top))' }}>
+      <Typography variant="h5" component="h1" sx={{ px: 0.5 }}>
+        Ajustes
       </Typography>
 
-
-      <Typography variant="subtitle1">
-        Alterar Senha
-      </Typography>
-
-
-      <TextField
-        label="Nova Senha"
-        type="password"
-        fullWidth
-        value={newPassword}
-        onChange={event =>
-          setNewPassword(
-            event.target.value
-          )
-        }
-        sx={{ mb: 2 }}
-      />
-
-
-      {passwordError && (
-        <Alert severity="error">
-          {passwordError}
-        </Alert>
-      )}
-
-
-      {passwordMessage && (
-        <Alert severity="success">
-          {passwordMessage}
-        </Alert>
-      )}
-
-
-      <Button
-        variant="contained"
-        fullWidth
-        onClick={
-          handleChangePassword
-        }
-        sx={{ mb: 2 }}
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 2,
+          p: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.75,
+          borderRadius: '18px',
+          border: 1,
+          borderColor: 'divider'
+        }}
       >
-        Alterar Senha
-      </Button>
+        <UserAvatar email={email} size={52} />
+
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle1" noWrap>
+            {email}
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            {isAdmin ? 'Administrador' : 'Conta Xepa'}
+          </Typography>
+        </Box>
+      </Paper>
 
 
-      <Button
-        variant="outlined"
-        color="error"
-        fullWidth
-        onClick={handleLogout}
-      >
-        Sair
-      </Button>
+      <SettingsSection title="Conta">
+        <SettingsRow
+          icon={<LockOutlinedIcon />}
+          label="Alterar senha"
+          onClick={onChangePassword}
+        />
+
+        <SettingsRow
+          icon={<LogoutIcon />}
+          label="Sair da conta"
+          onClick={onLogout}
+          danger
+        />
+      </SettingsSection>
 
 
       {isAdmin && (
-        <>
-          <Typography
-            variant="subtitle1"
-            sx={{ mt: 4 }}
-          >
-            Upload Planilha de Preços
-          </Typography>
-
-
-          <Button
-            variant="outlined"
-            component="label"
-            fullWidth
-            sx={{ mt: 2 }}
-          >
-            Selecionar Arquivo CSV/XLSX
-
-            <input
-              type="file"
-              hidden
-              accept=".csv,.xlsx"
-              onChange={
-                handlePriceUpload
-              }
-            />
-          </Button>
-        </>
+        <SettingsSection title="Administração">
+          <SettingsRow
+            icon={<SyncIcon />}
+            label={refreshing ? 'Atualizando preços…' : 'Atualizar preços agora'}
+            description={describeCeasaStatus(ceasaStatus)}
+            onClick={onRefreshPrices}
+            disabled={refreshing}
+            trailing={
+              refreshing ? <CircularProgress size={20} /> : undefined
+            }
+          />
+        </SettingsSection>
       )}
 
 
-      <Box sx={{ mt: 5 }}>
-        <Typography variant="subtitle1">
-          Privacidade e Contato
-        </Typography>
+      <SettingsSection title="Sobre">
+        <SettingsRow
+          icon={<PrivacyTipOutlinedIcon />}
+          label="Política de privacidade"
+          onClick={() => navigate('/privacy')}
+        />
 
+        <SettingsRow
+          icon={<MailOutlineIcon />}
+          label="Contato"
+          onClick={() => navigate('/contact')}
+        />
+      </SettingsSection>
 
-        <Button
-          variant="text"
-          fullWidth
-          onClick={() =>
-            navigate('/privacy')
-          }
-        >
-          Política de Privacidade
-        </Button>
-
-
-        <Button
-          variant="text"
-          fullWidth
-          onClick={() =>
-            navigate('/contact')
-          }
-        >
-          Contato
-        </Button>
-      </Box>
-    </Paper>
+      <Typography
+        variant="caption"
+        color="text.disabled"
+        sx={{ display: 'block', textAlign: 'center', mt: 3 }}
+      >
+        Xepa · Preços de referência do CEASA/RS
+        {ceasaStatus?.latestFileDate &&
+          ` · cotação de ${formatShortDate(ceasaStatus.latestFileDate)}`}
+      </Typography>
+    </Box>
   )
 }
 

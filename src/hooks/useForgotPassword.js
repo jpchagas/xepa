@@ -6,29 +6,36 @@ import { sendPasswordResetEmail } from 'firebase/auth'
 
 import { auth } from '../services/firebase'
 
+// Utils
+import { getAuthErrorMessage } from '../utils/authErrors'
+
 export default function useForgotPassword() {
   const [email, setEmail] = useState('')
-  const [message, setMessage] = useState('')
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const resetPassword = async (event) => {
     event.preventDefault()
 
     setError('')
-    setMessage('')
+    setLoading(true)
 
     try {
-      await sendPasswordResetEmail(auth, email)
+      await sendPasswordResetEmail(auth, email.trim())
 
-      setMessage('Email de redefinição enviado!')
-    } catch {
-      setError('Erro ao enviar email.')
+      setSent(true)
+    } catch (err) {
+      setError(getAuthErrorMessage(err, 'Não foi possível enviar o email.'))
+    } finally {
+      setLoading(false)
     }
   }
 
   return {
     email,
-    message,
+    sent,
+    loading,
     error,
 
     setEmail,

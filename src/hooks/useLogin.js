@@ -6,6 +6,9 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 
 import { auth } from '../services/firebase'
 
+// Utils
+import { getAuthErrorMessage } from '../utils/authErrors'
+
 export default function useLogin(onSuccess) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,11 +23,11 @@ export default function useLogin(onSuccess) {
     setLoading(true)
 
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(auth, email.trim(), password)
 
       onSuccess()
-    } catch {
-      setError('Email ou senha inválidos')
+    } catch (err) {
+      setError(getAuthErrorMessage(err, 'Email ou senha incorretos.'))
     } finally {
       setLoading(false)
     }
