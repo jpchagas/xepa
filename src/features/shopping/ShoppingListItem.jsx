@@ -25,6 +25,7 @@ import SellOutlinedIcon from '@mui/icons-material/SellOutlined'
 // Components
 import PriceEditor from './PriceEditor'
 import PriceTrendBadge from './PriceTrendBadge'
+import SeasonBadge from './SeasonBadge'
 import QuantityStepper from './QuantityStepper'
 
 // Utils
@@ -54,6 +55,7 @@ function ShoppingListItem({
   onRemove,
   onSavePrice,
   swap,
+  season,
   onOpenSwap
 }) {
   const [editingPrice, setEditingPrice] = useState(false)
@@ -218,6 +220,8 @@ function ShoppingListItem({
                 </Typography>
 
                 <PriceTrendBadge trend={trend} />
+
+                {season && <SeasonBadge season={season} />}
 
                 {hasPrice && isStalePrice(pricing.fileDate) && (
                   <Typography variant="caption" color="warning.dark">

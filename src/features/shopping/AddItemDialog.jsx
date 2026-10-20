@@ -33,6 +33,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 
+// Components
+import SeasonBadge from './SeasonBadge'
+
 // Utils
 import {
   formatDecimal,
@@ -50,7 +53,8 @@ const SlideUp = forwardRef(function SlideUp(props, ref) {
 
 const formatUnit = unit => {
   if (!unit) return null
-  if (unit === 'DZ') return 'por dúzia'
+  // Priced per unit everywhere in the app (CEASA quotes the dozen).
+  if (unit === 'DZ') return 'por unidade'
 
   return `por ${getDisplayUnit(unit)}`
 }
@@ -61,7 +65,9 @@ function AddItemDialog({
   onClose,
   products,
   items,
-  onAdd
+  onAdd,
+  season,
+  seasonalIds
 }) {
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
@@ -168,7 +174,69 @@ function AddItemDialog({
     setLastAdded(null)
   }
 
-  const visibleResults = results.slice(0, MAX_RESULTS)
+  // With an empty search, produce in season comes first.
+  const seasonal = query
+    ? []
+    : results.filter(product => seasonalIds.has(product.id))
+
+  const others = seasonal.length
+    ? results.filter(product => !seasonalIds.has(product.id))
+    : results
+
+  const visibleResults = others.slice(0, MAX_RESULTS)
+
+  const sectionTitle = text => (
+    <Typography
+      variant="overline"
+      color="text.secondary"
+      component="h3"
+      sx={{ display: 'block', px: 2, pt: 1.5, pb: 0.25 }}
+    >
+      {text}
+    </Typography>
+  )
+
+  // The badge is redundant inside the "Da estação" section itself.
+  const renderProduct = (product, { showSeason = true } = {}) => {
+    const amount = amountsByProduct.get(product.id)
+
+    return (
+      <ListItemButton
+        key={product.id}
+        onClick={() => addProduct(product)}
+      >
+        <ListItemText
+          primary={product.name}
+          secondary={
+            <Box
+              component="span"
+              sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}
+            >
+              {formatUnit(product.unit)}
+              {showSeason && seasonalIds.has(product.id) && (
+                <SeasonBadge season={season} />
+              )}
+            </Box>
+          }
+          slotProps={{
+            primary: { sx: { fontWeight: 600 } }
+          }}
+        />
+
+        {pendingKey === product.id ? (
+          <CircularProgress size={22} />
+        ) : amount !== undefined ? (
+          <Chip
+            size="small"
+            label={`${formatDecimal(amount)} na lista`}
+            sx={{ bgcolor: 'primary.main' }}
+          />
+        ) : (
+          <AddCircleOutlineIcon color="action" />
+        )}
+      </ListItemButton>
+    )
+  }
 
   return (
     <Dialog
@@ -315,45 +383,24 @@ function AddItemDialog({
             </ListItemButton>
           )}
 
-          {visibleResults.map(product => {
-            const amount = amountsByProduct.get(product.id)
+          {seasonal.length > 0 && (
+            <>
+              {sectionTitle(`Da estação · ${season.name}`)}
+              {seasonal.map(product => renderProduct(product, { showSeason: false }))}
+              {sectionTitle('Todos os produtos')}
+            </>
+          )}
 
-            return (
-              <ListItemButton
-                key={product.id}
-                onClick={() => addProduct(product)}
-              >
-                <ListItemText
-                  primary={product.name}
-                  secondary={formatUnit(product.unit)}
-                  slotProps={{
-                    primary: { sx: { fontWeight: 600 } }
-                  }}
-                />
-
-                {pendingKey === product.id ? (
-                  <CircularProgress size={22} />
-                ) : amount !== undefined ? (
-                  <Chip
-                    size="small"
-                    label={`${formatDecimal(amount)} na lista`}
-                    sx={{ bgcolor: 'primary.main' }}
-                  />
-                ) : (
-                  <AddCircleOutlineIcon color="action" />
-                )}
-              </ListItemButton>
-            )
-          })}
+          {visibleResults.map(product => renderProduct(product))}
         </List>
 
-        {results.length > MAX_RESULTS && (
+        {others.length > MAX_RESULTS && (
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ display: 'block', textAlign: 'center', py: 2 }}
           >
-            Mostrando {MAX_RESULTS} de {results.length} produtos.
+            Mostrando {MAX_RESULTS} de {others.length} produtos.
             Digite para refinar.
           </Typography>
         )}

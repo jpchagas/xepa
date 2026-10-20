@@ -48,6 +48,7 @@ import useShoppingLists from '../hooks/useShoppingLists'
 // Data
 import NUTRITION from '../data/nutrition'
 import recipes, { RECIPE_CATEGORIES } from '../data/recipes'
+import { FOOD_PRODUCTS, SEASONS } from '../data/seasons'
 import SWAP_GROUPS from '../data/swapGroups'
 
 // Utils
@@ -59,12 +60,17 @@ import {
   normalizeText,
   sortItemsByName
 } from '../utils/shoppingHelpers'
+import { getSeason, getSeasonalProductIds } from '../utils/seasonHelpers'
 import { buildSwapIndex, findSwap } from '../utils/swapHelpers'
 
 
 const TABS = ['list', 'recipes', 'settings']
 
 const SWAP_INDEX = buildSwapIndex(SWAP_GROUPS)
+
+// Season at app start; nobody keeps the app open across a solstice.
+const SEASON = getSeason(SEASONS)
+const SEASONAL_IDS = getSeasonalProductIds(SEASON, FOOD_PRODUCTS)
 
 
 const ADMIN_EMAIL = 'jpchagas@gmail.com'
@@ -635,6 +641,8 @@ function MainScreen({ user }) {
                 onRemove={handleRemoveItem}
                 onSavePrice={setItemPrice}
                 swaps={swaps}
+                season={SEASON}
+                seasonalIds={SEASONAL_IDS}
                 onOpenSwap={(item, swap) => setOpenSwap({ item, swap })}
               />
             </>
@@ -686,6 +694,8 @@ function MainScreen({ user }) {
             products={products}
             items={items}
             onAdd={handleAddItem}
+            season={SEASON}
+            seasonalIds={SEASONAL_IDS}
           />
 
           <MembersDialog

@@ -61,7 +61,7 @@ function EmptyState({ onAddItem }) {
 }
 
 
-function ItemStack({ items, productsById, swaps, handlers }) {
+function ItemStack({ items, productsById, swaps, season, seasonalIds, handlers }) {
   return (
     <Stack spacing={1}>
       <AnimatePresence initial={false}>
@@ -78,6 +78,7 @@ function ItemStack({ items, productsById, swaps, handlers }) {
               item={item}
               product={productsById.get(item.productId)}
               swap={swaps.get(item.id)}
+              season={seasonalIds.has(item.productId) ? season : null}
               {...handlers}
             />
           </motion.div>
@@ -99,6 +100,8 @@ function ShoppingList({
   onRemove,
   onSavePrice,
   swaps,
+  season,
+  seasonalIds,
   onOpenSwap
 }) {
   if (loading) {
@@ -134,6 +137,8 @@ function ShoppingList({
         items={pendingItems}
         productsById={productsById}
         swaps={swaps}
+        season={season}
+        seasonalIds={seasonalIds}
         handlers={handlers}
       />
 
@@ -157,6 +162,10 @@ function ShoppingList({
             items={checkedItems}
             productsById={productsById}
             swaps={swaps}
+            season={season}
+            seasonalIds={seasonalIds}
+        season={season}
+        seasonalIds={seasonalIds}
             handlers={handlers}
           />
         </>
