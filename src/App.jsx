@@ -7,6 +7,7 @@ import IOSInstallBanner from './components/feedback/IOSInstallBanner'
 
 // Hooks
 import useAuth from './hooks/useAuth'
+import useServiceWorkerMessages from './hooks/useServiceWorkerMessages'
 import useSplashScreen from './hooks/useSplashScreen'
 
 // Routes
@@ -17,6 +18,8 @@ function App() {
 
   const { user, loading: authLoading } = useAuth()
   const splashFinished = useSplashScreen()
+
+  useServiceWorkerMessages()
 
   const isAppLoading = authLoading || !splashFinished
 

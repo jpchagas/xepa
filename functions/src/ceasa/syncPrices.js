@@ -2,6 +2,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 
 // Services
+import { findPriceIncreases } from '../notifications/messages.js'
 import { downloadFile, findQuoteFiles } from './drive.js'
 import { parseQuotePdf } from './parseQuote.js'
 
@@ -33,7 +34,7 @@ export const toLocalIsoDate = date =>
     timeZone: 'America/Sao_Paulo'
   }).format(date)
 
-const addDays = (isoDate, days) => {
+export const addDays = (isoDate, days) => {
   const date = new Date(`${isoDate}T12:00:00Z`)
 
   date.setUTCDate(date.getUTCDate() + days)
@@ -116,7 +117,7 @@ export async function syncCeasaPrices({ db, logger, now = new Date() }) {
   })
 
   if (pending.length === 0) {
-    return { importedDates: [], updatedProducts: 0 }
+    return { importedDates: [], updatedProducts: 0, priceIncreases: [] }
   }
 
   const productsSnap = await db.collection('products').get()
@@ -209,8 +210,22 @@ export async function syncCeasaPrices({ db, logger, now = new Date() }) {
     ...importMarkers
   ])
 
+  const latestFileDate = pending.at(-1).fileDate
+
+  // Only rises in the newest quote matter for notifications.
+  const priceIncreases = findPriceIncreases(
+    [...touched].map(([productId, data]) => ({
+      productId,
+      name: products.get(productId)?.name ?? data.name,
+      latestPrice: data.latestPrice,
+      previousPrice: data.previousPrice
+    })),
+    latestFileDate
+  )
+
   return {
     importedDates: pending.map(file => file.fileDate),
-    updatedProducts: touched.size
+    updatedProducts: touched.size,
+    priceIncreases
   }
 }

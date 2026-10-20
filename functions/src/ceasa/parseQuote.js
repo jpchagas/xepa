@@ -121,15 +121,15 @@ function findQuoteDate(lines) {
 }
 
 
-// Returns { fileDate, rows, skipped }.
-// `skipped` counts rows without a trade that day (R$ 0.00) or with
-// inconsistent prices; they're left out so they don't overwrite a
-// product's last real price.
+// Returns { fileDate, rows, skipped, skippedRows }.
+// Skipped rows have no trade that day (R$ 0.00) or inconsistent prices;
+// they're left out of `rows` so they don't overwrite a product's last
+// real price. `skippedRows` lists them ({ name, unit, category }).
 export async function parseQuotePdf(data) {
   const lines = await readLines(data)
 
   const rows = []
-  let skipped = 0
+  const skippedRows = []
   let category = null
   let inTable = false
 
@@ -160,7 +160,7 @@ export async function parseQuotePdf(data) {
       if (isValid) {
         rows.push({ name, unit, category, max, average, min })
       } else {
-        skipped++
+        skippedRows.push({ name, unit, category })
       }
 
       continue
@@ -182,6 +182,7 @@ export async function parseQuotePdf(data) {
   return {
     fileDate: findQuoteDate(lines),
     rows,
-    skipped
+    skipped: skippedRows.length,
+    skippedRows
   }
 }

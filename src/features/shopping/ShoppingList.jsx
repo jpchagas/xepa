@@ -61,7 +61,7 @@ function EmptyState({ onAddItem }) {
 }
 
 
-function ItemStack({ items, productsById, handlers }) {
+function ItemStack({ items, productsById, swaps, handlers }) {
   return (
     <Stack spacing={1}>
       <AnimatePresence initial={false}>
@@ -77,6 +77,7 @@ function ItemStack({ items, productsById, handlers }) {
             <ShoppingListItem
               item={item}
               product={productsById.get(item.productId)}
+              swap={swaps.get(item.id)}
               {...handlers}
             />
           </motion.div>
@@ -96,7 +97,9 @@ function ShoppingList({
   onToggle,
   onUpdateAmount,
   onRemove,
-  onSavePrice
+  onSavePrice,
+  swaps,
+  onOpenSwap
 }) {
   if (loading) {
     return (
@@ -121,7 +124,8 @@ function ShoppingList({
     onToggle,
     onUpdateAmount,
     onRemove,
-    onSavePrice
+    onSavePrice,
+    onOpenSwap
   }
 
   return (
@@ -129,6 +133,7 @@ function ShoppingList({
       <ItemStack
         items={pendingItems}
         productsById={productsById}
+        swaps={swaps}
         handlers={handlers}
       />
 
@@ -151,6 +156,7 @@ function ShoppingList({
           <ItemStack
             items={checkedItems}
             productsById={productsById}
+            swaps={swaps}
             handlers={handlers}
           />
         </>

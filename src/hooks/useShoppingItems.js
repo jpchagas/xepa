@@ -6,6 +6,7 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   limit,
@@ -36,7 +37,9 @@ const today = () =>
 // Writes are not awaited: Firestore applies them to the local
 // cache immediately (the snapshot updates the UI) and syncs when
 // online. Failures are reported through `onError`.
-function useShoppingItems(listId, products, { onError } = {}) {
+// `userId` is stored as `addedBy` on new items so the other members
+// of a shared list get notified (functions/src/notifications).
+function useShoppingItems(listId, products, { onError, userId } = {}) {
   const [state, setState] = useState({
     listId: null,
     items: NO_ITEMS
@@ -198,6 +201,7 @@ function useShoppingItems(listId, products, { onError } = {}) {
         ...prices,
         amount: 1,
         checked: false,
+        addedBy: userId ?? null,
         createdAt: serverTimestamp(),
         isCustom: newItem.type === 'new'
       })
@@ -334,6 +338,7 @@ function useShoppingItems(listId, products, { onError } = {}) {
         checked: false,
         isCustom: !entry.ceasa,
         recipes: [recipeName],
+        addedBy: userId ?? null,
         createdAt: serverTimestamp()
       })
 
@@ -343,6 +348,50 @@ function useShoppingItems(listId, products, { onError } = {}) {
     track(batch.commit())
 
     return { added, updated }
+  }
+
+
+  // Replaces the item's product with a cheaper, similar one. The amount
+  // and recipes stay; `swappedFrom` records the original for the
+  // "Trocado de ..." caption and for undo.
+  const swapItem = (item, product, fromName) => {
+    if (!listId) return
+
+    track(
+      updateDoc(itemRef(item.id), {
+        productId: product.id,
+        price: product.latestPrice?.average ?? null,
+        previousPrice: product.previousPrice?.average ?? null,
+        fileDate: product.latestPrice?.fileDate ?? null,
+        swappedFrom: { productId: item.productId, name: fromName }
+      })
+    )
+  }
+
+  // Puts back the fields an item had before swapItem.
+  const undoSwap = item => {
+    if (!listId) return
+
+    track(
+      updateDoc(itemRef(item.id), {
+        productId: item.productId,
+        price: item.price ?? null,
+        previousPrice: item.previousPrice ?? null,
+        fileDate: item.fileDate ?? null,
+        swappedFrom: item.swappedFrom ?? deleteField()
+      })
+    )
+  }
+
+  // "Manter": don't suggest this alternative for this item again.
+  const dismissSwap = (item, productId) => {
+    if (!listId) return
+
+    track(
+      updateDoc(itemRef(item.id), {
+        swapDismissed: arrayUnion(productId)
+      })
+    )
   }
 
 
@@ -370,7 +419,8 @@ function useShoppingItems(listId, products, { onError } = {}) {
 
     const { id, ...data } = item
 
-    track(setDoc(itemRef(id), data))
+    // `restored` stops the "item added" notification from firing again.
+    track(setDoc(itemRef(id), { ...data, restored: true }))
   }
 
 
@@ -400,6 +450,9 @@ function useShoppingItems(listId, products, { onError } = {}) {
     addRecipeItems,
     updateAmount,
     setItemPrice,
+    swapItem,
+    undoSwap,
+    dismissSwap,
     toggleChecked,
     removeItem,
     restoreItem,

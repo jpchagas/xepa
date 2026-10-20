@@ -13,7 +13,8 @@ npm run dev        # Vite dev server
 npm run build      # production build to dist/
 npm run lint       # ESLint (flat config, eslint.config.js)
 npm run preview    # serve the production build
-npm test           # node:test for src/**/*.test.js (recipe data + helpers)
+npm test           # node:test for src/**/*.test.js (recipe/swap data + helpers)
+npm run nutrition  # re-download src/data/nutrition.js from TabNut (after editing swapGroups.js)
 firebase deploy --only hosting   # deploys dist/ (SPA rewrite to index.html)
 
 cd functions && npm test         # node:test suite for the CEASA import (runs before every functions deploy)
@@ -43,9 +44,12 @@ Strict split: **components render UI, hooks own state and Firestore logic**.
 - `products` — catalog: `name`, `unit` (CEASA codes: KG, UND, DZ, MOL, BDJ, CX…; `getDisplayUnit` maps them to labels), `category`, and the live price summary `latestPrice` {average, min, max, fileDate} / `previousPrice` {average, fileDate}. Users can create products manually.
 - `prices/{productId}/history/{fileDate}` — one doc per quote day (`average`/`min`/`max`, `source: 'ceasa' | 'manual'`).
 - `ceasaImports/{fileDate}` — server-only marker that a CEASA quote was imported (idempotency).
+- `users/{uid}/notifications/{id}` — written only by Cloud Functions; the app reads them and sets `read`. Ids: `items-{listId}-{actorUid}` (grouped while unread, 30 min window) and `prices-{listId}-{fileDate}`.
+- `users/{uid}/fcmTokens/{token}` — one doc per device with push enabled; written by the app, dead tokens deleted by the functions.
+- `users/{uid}.notifications` — `{ itemsAdded, priceIncreases }` preferences (missing = on).
 - `meta/ceasa` — import status (`lastRunAt`, `lastStatus`, `lastError`, `latestFileDate`), shown in Settings; clients need read access.
 - `sharedLists` — `name`, `ownerId`, `members` (array of uids; queried with `array-contains`). A default "Minha Lista" is auto-created only after the **server** confirms the user has none (an empty cache snapshot is ignored). Only the owner sees "Excluir lista" (deleting also batch-deletes its items); other members get "Sair da lista". The selected list id is remembered in `localStorage`.
-- `sharedLists/{listId}/items` — `productId`, `price`, `previousPrice`, `amount`, `fileDate`, `isCustom`, `checked`, `recipes` (names of recipes the item was added for, shown as "Para: …"). **Lists show the product's live `latestPrice`** via `getItemPricing(item, product)`; the item's own price fields are a snapshot taken when it was added and only used as a fallback. Adding a product already on the list increments `amount`. A manually entered price (products CEASA doesn't quote) updates the product's `latestPrice` too, so every user sees it.
+- `sharedLists/{listId}/items` — `productId`, `price`, `previousPrice`, `amount`, `fileDate`, `isCustom`, `checked`, `recipes` (names of recipes the item was added for, shown as "Para: …"), `addedBy` (uid; drives "item added" notifications), `restored` (set by undo so it doesn't notify again), `swappedFrom` ({ productId, name } after a cheaper swap), `swapDismissed` (product ids the user chose not to swap to). **Lists show the product's live `latestPrice`** via `getItemPricing(item, product)`; the item's own price fields are a snapshot taken when it was added and only used as a fallback. Adding a product already on the list increments `amount`. A manually entered price (products CEASA doesn't quote) updates the product's `latestPrice` too, so every user sees it.
 
 ### CEASA price import (`functions/`)
 
@@ -55,6 +59,19 @@ Prices come from CEASA/RS's public Google Drive folder (year → `MM/AAAA Mês` 
 - `ceasa/parseQuote.js` reads the PDF with `pdfjs-dist`: each table cell is one text item, so rows are rebuilt by y-coordinate; a price row has exactly 5 cells (`Produto, UND, MAX, MAIS FREQUENTE, MÍNIMO`) and a single uppercase cell is a category. Rows with R$ 0.00 (no trade that day) are skipped so a product keeps its last real price (the list then shows "cotação de dd/mm").
 - `ceasa/syncPrices.js` — first run backfills 90 days, later runs look back 10 days and skip dates already in `ceasaImports`. History is written per file; product summaries (`mergeQuote`, order-independent) and import markers are written last, so an interrupted run is simply redone. Product ids come from `normalizeProductId` — keep it byte-for-byte stable or new imports will create duplicate products.
 - The admin is a hardcoded email in both `functions/src/index.js` (enforced) and `MainScreen` (UI only).
+
+### Notifications
+
+Created server-side in `functions/src/notifications/` (texts in `messages.js` are pure and tested):
+- `notifyListItemAdded` (Firestore trigger on new items): notifies the **other** members of a shared list; a transaction groups bursts (a recipe adds many items) into one notification per list + person.
+- After a CEASA import, `notifyPriceIncreases` notifies members of lists with **unchecked** items whose price rose ≥ 5% (`PRICE_INCREASE_THRESHOLD`) in the newest quote; skipped for quotes older than 3 days (backfills).
+- `deliver.js` stores the doc and sends a data-only FCM web push with a `tag` (same tag replaces the device notification instead of stacking).
+
+Client: `useNotifications` (feed, unread badge, toast for news while open), `usePushNotifications` (permission + FCM token; needs `FCM_VAPID_KEY` in `services/firebase.js`, otherwise the Settings switch is hidden), `useNotificationPrefs`. `public/push-sw.js` is imported into the Workbox service worker (`vite.config.js` → `workbox.importScripts`): it skips the system notification when the app is in front (except iOS, which requires one per push) and routes taps via `postMessage` → `useServiceWorkerMessages`. Links are `/main?list={id}`; `MainScreen` selects the list and clears the param. iOS web push only works for the app installed on the home screen.
+
+### Cheaper swaps
+
+`utils/swapHelpers.findSwap` suggests, per unchecked item, a cheaper product with similar nutrition. Candidates come only from the curated groups in `src/data/swapGroups.js` (products that work alike in the kitchen; each has a TabNut id and a cooking note). Nutrition (`src/data/nutrition.js`, generated from TabNut/USDA SR25 by `scripts/build-nutrition.mjs` and committed — never fetched at runtime) is similar when every main nutrient per 100 g (kcal, protein, carbs, fat, fiber, with small-value floors) differs by ≤ 35%. The alternative must also share the CEASA unit, be ≥ 10% cheaper with fresh prices, and not already be on the list or dismissed. Items added for a recipe show a "Muda a receita" warning with the alternative's cooking note. Beef isn't covered: TabNut has no Brazilian cuts. `npm test` checks every group product exists in the CEASA quote (including R$ 0,00 rows, via `parseQuotePdf().skippedRows`), has nutrition data, and that each group has a single unit.
 
 ### Recipes
 

@@ -28,6 +28,11 @@ export const db = initializeFirestore(app, {
 // Same region as functions/src/index.js.
 export const functions = getFunctions(app, 'southamerica-east1')
 
+// Web push public key: Firebase console -> Project settings ->
+// Cloud Messaging -> Web Push certificates. Phone notifications stay
+// hidden in Settings until this is set.
+export const FCM_VAPID_KEY = 'BO7KUCPomZgQUNpMHz1xELVTUR2vRMomekfATd7iow8q2d259wrg9sia6fHJZGHcScZ0ae4gA5fQ2s4Ztzfn3f8'
+
 export default app
 
 

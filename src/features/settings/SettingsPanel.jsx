@@ -7,15 +7,20 @@ import {
   ListItemIcon,
   ListItemText,
   Paper,
+  Switch,
   Typography
 } from '@mui/material'
+
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
 
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
+import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
 import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined'
 import SyncIcon from '@mui/icons-material/Sync'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 
 // Routing
 import { useNavigate } from 'react-router-dom'
@@ -114,11 +119,64 @@ function SettingsRow({
 }
 
 
+// Explains why phone notifications can't be turned on, if so.
+function describePush(push) {
+  if (push.needsInstall) {
+    return 'No iPhone, instale o Xepa na tela de início (Compartilhar → Adicionar à Tela de Início) para ativar'
+  }
+
+  if (!push.supported) return 'Este navegador não suporta notificações'
+
+  if (push.permission === 'denied') {
+    return 'Bloqueadas no navegador. Libere nas configurações do site.'
+  }
+
+  return push.enabled
+    ? 'Ativadas neste aparelho'
+    : 'Receba avisos mesmo com o app fechado'
+}
+
+
+function ToggleRow({ icon, label, description, checked, disabled, onToggle }) {
+  return (
+    <SettingsRow
+      icon={icon}
+      label={label}
+      description={description}
+      onClick={onToggle}
+      disabled={disabled}
+      role="switch"
+      aria-checked={checked}
+      trailing={
+        <Switch
+          edge="end"
+          checked={checked}
+          disabled={disabled}
+          tabIndex={-1}
+          slotProps={{ input: { 'aria-hidden': true } }}
+          sx={{
+            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+              bgcolor: 'success.main',
+              opacity: 1
+            },
+            '& .MuiSwitch-switchBase.Mui-checked': { color: '#FFFFFF' }
+          }}
+        />
+      }
+    />
+  )
+}
+
+
 function SettingsPanel({
   email,
   isAdmin,
   ceasaStatus,
   refreshing,
+  push,
+  notificationPrefs,
+  onTogglePush,
+  onTogglePreference,
   onChangePassword,
   onLogout,
   onRefreshPrices
@@ -156,6 +214,40 @@ function SettingsPanel({
           </Typography>
         </Box>
       </Paper>
+
+
+      <SettingsSection title="Notificações">
+        {push.configured && (
+          <ToggleRow
+            icon={<NotificationsActiveOutlinedIcon />}
+            label="Notificações no celular"
+            description={describePush(push)}
+            checked={push.enabled}
+            disabled={
+              push.busy ||
+              !push.supported ||
+              (push.permission === 'denied' && !push.enabled)
+            }
+            onToggle={onTogglePush}
+          />
+        )}
+
+        <ToggleRow
+          icon={<AddShoppingCartIcon />}
+          label="Itens adicionados"
+          description="Quando alguém adiciona produtos a uma lista compartilhada"
+          checked={notificationPrefs.itemsAdded}
+          onToggle={() => onTogglePreference('itemsAdded')}
+        />
+
+        <ToggleRow
+          icon={<TrendingUpIcon />}
+          label="Aumento de preço"
+          description="Quando um item da lista sobe 5% ou mais no CEASA"
+          checked={notificationPrefs.priceIncreases}
+          onToggle={() => onTogglePreference('priceIncreases')}
+        />
+      </SettingsSection>
 
 
       <SettingsSection title="Conta">

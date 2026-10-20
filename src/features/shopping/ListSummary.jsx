@@ -7,6 +7,7 @@ import {
 import { alpha } from '@mui/material/styles'
 
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 
 // Utils
@@ -59,7 +60,9 @@ function ListSummary({
   itemCount,
   checkedCount,
   savings,
-  priceDate
+  priceDate,
+  swapCount = 0,
+  swapSavings = 0
 }) {
   const progress =
     itemCount ? (checkedCount / itemCount) * 100 : 0
@@ -117,6 +120,17 @@ function ListSummary({
         </Typography>
 
         <SavingsBadge savings={savings} />
+
+        {swapCount > 0 && (
+          <Typography
+            variant="caption"
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1, fontWeight: 700 }}
+          >
+            <LightbulbOutlinedIcon sx={{ fontSize: 16 }} />
+            {swapCount === 1 ? '1 troca' : `${swapCount} trocas`} podem economizar{' '}
+            {formatCurrency(swapSavings)}
+          </Typography>
+        )}
 
         {itemCount > 0 && (
           <Box sx={{ mt: 2 }}>

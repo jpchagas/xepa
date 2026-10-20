@@ -3,11 +3,15 @@ import { initializeApp } from 'firebase-admin/app'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import { setGlobalOptions } from 'firebase-functions'
 import * as logger from 'firebase-functions/logger'
+import { getMessaging } from 'firebase-admin/messaging'
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 
 // Services
-import { syncCeasaPrices } from './ceasa/syncPrices.js'
+import { addDays, syncCeasaPrices, toLocalIsoDate } from './ceasa/syncPrices.js'
+import { handleItemAdded } from './notifications/itemsAdded.js'
+import { notifyPriceIncreases } from './notifications/priceIncreases.js'
 
 
 initializeApp()
@@ -19,6 +23,10 @@ setGlobalOptions({
 })
 
 const db = getFirestore()
+const messaging = getMessaging()
+
+// Backfills and late imports shouldn't alert about old quotes.
+const PRICE_ALERT_MAX_AGE_DAYS = 3
 
 // Same admin as the web app's Settings screen.
 const ADMIN_EMAILS = ['jpchagas@gmail.com']
@@ -50,9 +58,39 @@ async function runSync(trigger) {
       { merge: true }
     )
 
-    logger.info('CEASA sync finished', { trigger, ...result })
+    logger.info('CEASA sync finished', {
+      trigger,
+      importedDates: result.importedDates,
+      updatedProducts: result.updatedProducts,
+      priceIncreases: result.priceIncreases.length
+    })
 
-    return result
+    const latestFileDate = result.importedDates.at(-1)
+    const today = toLocalIsoDate(new Date())
+
+    if (
+      latestFileDate &&
+      latestFileDate >= addDays(today, -PRICE_ALERT_MAX_AGE_DAYS)
+    ) {
+      // Prices are already saved; a notification failure is logged
+      // but doesn't mark the import as failed.
+      try {
+        await notifyPriceIncreases({
+          db,
+          messaging,
+          logger,
+          fileDate: latestFileDate,
+          increases: result.priceIncreases
+        })
+      } catch (error) {
+        logger.error('Price notifications failed', { error: error.message })
+      }
+    }
+
+    return {
+      importedDates: result.importedDates,
+      updatedProducts: result.updatedProducts
+    }
   } catch (error) {
     logger.error('CEASA sync failed', { trigger, error: error.message })
 
@@ -100,3 +138,23 @@ export const refreshCeasaPrices = onCall(RUN_OPTIONS, async request => {
     throw new HttpsError('internal', error.message)
   }
 })
+
+
+// Someone added an item to a shared list: tell the other members.
+export const notifyListItemAdded = onDocumentCreated(
+  {
+    document: 'sharedLists/{listId}/items/{itemId}',
+    // Recipes add many items at once; don't queue behind the import's
+    // single-instance limit.
+    maxInstances: 10
+  },
+  async event => {
+    await handleItemAdded({
+      db,
+      messaging,
+      logger,
+      listId: event.params.listId,
+      item: event.data?.data()
+    })
+  }
+)

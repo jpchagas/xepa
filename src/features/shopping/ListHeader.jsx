@@ -4,6 +4,7 @@ import { useState } from 'react'
 // Third-party
 import {
   AvatarGroup,
+  Badge,
   Box,
   ButtonBase,
   Divider,
@@ -23,6 +24,7 @@ import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined'
 import RemoveDoneIcon from '@mui/icons-material/RemoveDone'
 
@@ -46,6 +48,8 @@ function ListHeader({
   isOwner,
   itemCount,
   checkedCount,
+  unreadCount,
+  onOpenNotifications,
   onSelectList,
   onCreateList,
   onOpenMembers,
@@ -85,79 +89,87 @@ function ListHeader({
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <ButtonBase
-          onClick={event => setListMenuAnchor(event.currentTarget)}
-          aria-haspopup="menu"
-          aria-label="Trocar de lista"
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            justifyContent: 'flex-start',
-            textAlign: 'left',
-            borderRadius: '10px',
-            py: 0.25
-          }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="overline"
-              color="text.secondary"
-              noWrap
-              sx={{ display: 'block' }}
-            >
-              {isShared
-                ? `Compartilhada · ${members.length} pessoas`
-                : 'Lista de compras'}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {/* Who has access; opens sharing */}
+          <ButtonBase
+            onClick={onOpenMembers}
+            aria-label={isShared ? `Compartilhada com ${members.length} pessoas` : 'Compartilhar lista'}
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.75, borderRadius: 99, minHeight: 24 }}
+          >
+            <Typography variant="overline" color="text.secondary" noWrap>
+              {isShared ? 'Compartilhada' : 'Lista de compras'}
             </Typography>
 
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography variant="h5" component="h1" noWrap>
-                {selectedList.name}
+            {isShared ? (
+              <AvatarGroup
+                max={4}
+                sx={{
+                  '& .MuiAvatar-root': {
+                    width: 22,
+                    height: 22,
+                    fontSize: 11,
+                    borderWidth: 1.5,
+                    borderColor: 'background.default'
+                  }
+                }}
+              >
+                {members.map(member => (
+                  <UserAvatar
+                    key={member.id}
+                    email={member.email}
+                    size={22}
+                  />
+                ))}
+              </AvatarGroup>
+            ) : (
+              <Typography
+                variant="caption"
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.25, fontWeight: 700 }}
+              >
+                <PersonAddAlt1OutlinedIcon sx={{ fontSize: 16 }} />
+                Convidar
               </Typography>
+            )}
+          </ButtonBase>
 
-              <KeyboardArrowDownIcon sx={{ ml: 0.25, flexShrink: 0 }} />
-            </Box>
-          </Box>
-        </ButtonBase>
+          <ButtonBase
+            onClick={event => setListMenuAnchor(event.currentTarget)}
+            aria-haspopup="menu"
+            aria-label="Trocar de lista"
+            sx={{
+              display: 'flex',
+              maxWidth: '100%',
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+              borderRadius: '10px'
+            }}
+          >
+            <Typography variant="h5" component="h1" noWrap>
+              {selectedList.name}
+            </Typography>
 
-        <ButtonBase
-          onClick={onOpenMembers}
-          aria-label="Compartilhar lista"
-          sx={{ borderRadius: 99 }}
+            <KeyboardArrowDownIcon sx={{ ml: 0.25, flexShrink: 0 }} />
+          </ButtonBase>
+        </Box>
+
+        <IconButton
+          onClick={onOpenNotifications}
+          aria-label={
+            unreadCount > 0
+              ? `Notificações, ${unreadCount} novas`
+              : 'Notificações'
+          }
+          sx={roundButtonSx}
         >
-          {isShared ? (
-            <AvatarGroup
-              max={3}
-              sx={{
-                '& .MuiAvatar-root': {
-                  width: 34,
-                  height: 34,
-                  fontSize: 14,
-                  borderColor: 'background.default'
-                }
-              }}
-            >
-              {members.map(member => (
-                <UserAvatar
-                  key={member.id}
-                  email={member.email}
-                  size={34}
-                />
-              ))}
-            </AvatarGroup>
-          ) : (
-            <Box
-              sx={{
-                ...roundButtonSx,
-                display: 'grid',
-                placeItems: 'center',
-                borderRadius: '50%'
-              }}
-            >
-              <PersonAddAlt1OutlinedIcon fontSize="small" />
-            </Box>
-          )}
-        </ButtonBase>
+          <Badge
+            badgeContent={unreadCount}
+            color="error"
+            max={9}
+            sx={{ '& .MuiBadge-badge': { fontWeight: 800 } }}
+          >
+            <NotificationsNoneIcon />
+          </Badge>
+        </IconButton>
 
         <IconButton
           onClick={event => setActionsAnchor(event.currentTarget)}

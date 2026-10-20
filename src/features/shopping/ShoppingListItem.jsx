@@ -18,6 +18,7 @@ import {
 
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import SellOutlinedIcon from '@mui/icons-material/SellOutlined'
 
@@ -51,7 +52,9 @@ function ShoppingListItem({
   onToggle,
   onUpdateAmount,
   onRemove,
-  onSavePrice
+  onSavePrice,
+  swap,
+  onOpenSwap
 }) {
   const [editingPrice, setEditingPrice] = useState(false)
 
@@ -223,14 +226,40 @@ function ShoppingListItem({
                 )}
               </Box>
 
-              {item.recipes?.length > 0 && (
+              {(item.recipes?.length > 0 || item.swappedFrom) && (
                 <Typography
                   variant="caption"
                   color="text.secondary"
                   sx={{ display: 'block', mt: 0.25 }}
                 >
-                  Para: {item.recipes.join(', ')}
+                  {[
+                    item.recipes?.length > 0 && `Para: ${item.recipes.join(', ')}`,
+                    item.swappedFrom && `Trocado de ${item.swappedFrom.name}`
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Typography>
+              )}
+
+              {swap && !checked && (
+                <Button
+                  size="small"
+                  onClick={() => onOpenSwap(item, swap)}
+                  startIcon={<LightbulbOutlinedIcon />}
+                  sx={{
+                    mt: 0.75,
+                    px: 1.25,
+                    borderRadius: 99,
+                    bgcolor: 'success.light',
+                    color: 'success.dark',
+                    fontWeight: 700,
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    '&:hover': { bgcolor: 'success.light' }
+                  }}
+                >
+                  {swap.alternative.product.name} sai {formatCurrency(swap.savings)} mais barato
+                </Button>
               )}
 
               <Box

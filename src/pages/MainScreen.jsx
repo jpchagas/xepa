@@ -1,5 +1,5 @@
 // React
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 // Third-party
 import {
@@ -19,6 +19,7 @@ import AdBanner from '../components/feedback/AdBanner'
 import AppSnackbar from '../components/feedback/AppSnackbar'
 import ConfirmDialog from '../components/feedback/ConfirmDialog'
 import MainBottomNavigation from '../components/navigation/MainBottomNavigation'
+import NotificationsDialog from '../features/notifications/NotificationsDialog'
 import RecipeDialog from '../features/recipes/RecipeDialog'
 import RecipesPanel from '../features/recipes/RecipesPanel'
 import ChangePasswordDialog from '../features/settings/ChangePasswordDialog'
@@ -30,18 +31,24 @@ import ListHeader from '../features/shopping/ListHeader'
 import ListSummary from '../features/shopping/ListSummary'
 import MembersDialog from '../features/shopping/MembersDialog'
 import ShoppingList from '../features/shopping/ShoppingList'
+import SwapDialog from '../features/shopping/SwapDialog'
 
 // Hooks
 import useAlert from '../hooks/useAlert'
 import useCeasaSync from '../hooks/useCeasaSync'
 import useListMembers from '../hooks/useListMembers'
+import useNotificationPrefs from '../hooks/useNotificationPrefs'
+import useNotifications from '../hooks/useNotifications'
 import usePassword from '../hooks/usePassword'
 import useProducts from '../hooks/useProducts'
+import usePushNotifications from '../hooks/usePushNotifications'
 import useShoppingItems from '../hooks/useShoppingItems'
 import useShoppingLists from '../hooks/useShoppingLists'
 
 // Data
+import NUTRITION from '../data/nutrition'
 import recipes, { RECIPE_CATEGORIES } from '../data/recipes'
+import SWAP_GROUPS from '../data/swapGroups'
 
 // Utils
 import {
@@ -52,9 +59,12 @@ import {
   normalizeText,
   sortItemsByName
 } from '../utils/shoppingHelpers'
+import { buildSwapIndex, findSwap } from '../utils/swapHelpers'
 
 
 const TABS = ['list', 'recipes', 'settings']
+
+const SWAP_INDEX = buildSwapIndex(SWAP_GROUPS)
 
 
 const ADMIN_EMAIL = 'jpchagas@gmail.com'
@@ -112,6 +122,8 @@ function MainScreen({ user }) {
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [confirm, setConfirm] = useState(null)
   const [openRecipe, setOpenRecipe] = useState(null)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [openSwap, setOpenSwap] = useState(null)
 
 
   const {
@@ -151,6 +163,9 @@ function MainScreen({ user }) {
     addRecipeItems,
     updateAmount,
     setItemPrice,
+    swapItem,
+    undoSwap,
+    dismissSwap,
     toggleChecked,
     removeItem,
     restoreItem,
@@ -159,7 +174,7 @@ function MainScreen({ user }) {
   } = useShoppingItems(
     selectedList?.id,
     products,
-    { onError: showError }
+    { onError: showError, userId: user?.uid }
   )
 
   const {
@@ -177,6 +192,41 @@ function MainScreen({ user }) {
     refreshing,
     refresh: refreshPrices
   } = useCeasaSync()
+
+  const push = usePushNotifications(user)
+  const notificationPrefs = useNotificationPrefs(user)
+
+  const {
+    notifications,
+    unreadCount,
+    markAllRead
+  } = useNotifications(user, {
+    onArrive: handleNotificationArrive
+  })
+
+
+  // Notification links open a list: /main?list=<id>
+  const linkedListId = searchParams.get('list')
+
+  useEffect(() => {
+    if (!linkedListId || lists.length === 0) return
+
+    if (lists.some(list => list.id === linkedListId)) {
+      selectList(linkedListId)
+    }
+
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous)
+
+        next.delete('list')
+        next.delete('tab')
+
+        return next
+      },
+      { replace: true }
+    )
+  }, [linkedListId, lists, selectList, setSearchParams])
 
 
   const isAdmin = user?.email === ADMIN_EMAIL
@@ -209,6 +259,31 @@ function MainScreen({ user }) {
       checkedItems: sorted.filter(item => item.checked)
     }
   }, [items, productsById])
+
+  // Cheaper, nutritionally similar alternatives (utils/swapHelpers).
+  const swaps = useMemo(() => {
+    const context = {
+      productsById,
+      swapIndex: SWAP_INDEX,
+      nutrition: NUTRITION,
+      listProductIds
+    }
+
+    const result = new Map()
+
+    pendingItems.forEach(item => {
+      const swap = findSwap(item, context)
+
+      if (swap) result.set(item.id, swap)
+    })
+
+    return result
+  }, [pendingItems, productsById, listProductIds])
+
+  const swapSavings = [...swaps.values()].reduce(
+    (sum, swap) => sum + swap.savings,
+    0
+  )
 
   const total = calculateTotalPrice(items, productsById)
   const cartTotal = calculateTotalPrice(checkedItems, productsById)
@@ -359,6 +434,30 @@ function MainScreen({ user }) {
     })
 
 
+  /** Swaps */
+
+  const handleSwap = () => {
+    const { item, swap } = openSwap
+    const fromName = swap.current.product.name
+    const toName = swap.alternative.product.name
+
+    swapItem(item, swap.alternative.product, fromName)
+    setOpenSwap(null)
+
+    showAlert('success', `${fromName} trocado por ${toName}`, {
+      label: 'Desfazer',
+      onClick: () => undoSwap(item)
+    })
+  }
+
+  const handleKeep = () => {
+    const { item, swap } = openSwap
+
+    dismissSwap(item, swap.alternative.product.id)
+    setOpenSwap(null)
+  }
+
+
   /** Recipes */
 
   const handleAddRecipe = (entries, recipe) => {
@@ -408,12 +507,77 @@ function MainScreen({ user }) {
     }
   }
 
+  /** Notifications */
+
+  function openNotification(notification) {
+    if (lists.some(list => list.id === notification.listId)) {
+      selectList(notification.listId)
+    }
+
+    setNotificationsOpen(false)
+    changeTab('list')
+  }
+
+  // A notification arrived (or grew) while the app is open.
+  function handleNotificationArrive(notification) {
+    const message =
+      notification.type === 'price_increase'
+        ? `${notification.title}: ${notification.body}`
+        : `${notification.body} · ${notification.listName}`
+
+    showAlert('info', message, {
+      label: 'Ver',
+      onClick: () => openNotification(notification)
+    })
+  }
+
+  const handleOpenNotifications = () => {
+    setNotificationsOpen(true)
+    markAllRead()
+  }
+
+  const handleTogglePush = async () => {
+    try {
+      if (push.enabled) {
+        await push.disable()
+        showAlert('info', 'Notificações desativadas neste aparelho')
+        return
+      }
+
+      const enabled = await push.enable()
+
+      showAlert(
+        enabled ? 'success' : 'warning',
+        enabled
+          ? 'Pronto! Você vai receber notificações neste aparelho.'
+          : 'Permissão negada. Libere as notificações nas configurações do navegador.'
+      )
+    } catch (error) {
+      console.error(error)
+      showAlert('error', 'Não foi possível ativar as notificações.')
+    }
+  }
+
+  const handleTogglePreference = key => {
+    notificationPrefs
+      .setPreference(key, !notificationPrefs[key])
+      .catch(error => {
+        console.error(error)
+        showError()
+      })
+  }
+
+
   const handleLogout = () =>
     setConfirm({
       title: 'Sair da conta?',
       message: 'Suas listas continuam salvas. Entre de novo quando quiser.',
       confirmLabel: 'Sair',
-      onConfirm: () => runSafely(logout)
+      onConfirm: () =>
+        runSafely(async () => {
+          await push.forgetDevice()
+          await logout()
+        })
     })
 
 
@@ -443,6 +607,8 @@ function MainScreen({ user }) {
                 onClearItems={handleClearItems}
                 onDeleteList={handleDeleteList}
                 onLeaveList={handleLeaveList}
+                unreadCount={unreadCount}
+                onOpenNotifications={handleOpenNotifications}
               />
 
               {items.length > 0 && (
@@ -453,6 +619,8 @@ function MainScreen({ user }) {
                   checkedCount={checkedItems.length}
                   savings={savings}
                   priceDate={priceDate}
+                  swapCount={swaps.size}
+                  swapSavings={swapSavings}
                 />
               )}
 
@@ -466,6 +634,8 @@ function MainScreen({ user }) {
                 onUpdateAmount={updateAmount}
                 onRemove={handleRemoveItem}
                 onSavePrice={setItemPrice}
+                swaps={swaps}
+                onOpenSwap={(item, swap) => setOpenSwap({ item, swap })}
               />
             </>
           ) : (
@@ -492,6 +662,10 @@ function MainScreen({ user }) {
             onChangePassword={() => setPasswordOpen(true)}
             onLogout={handleLogout}
             onRefreshPrices={handleRefreshPrices}
+            push={push}
+            notificationPrefs={notificationPrefs}
+            onTogglePush={handleTogglePush}
+            onTogglePreference={handleTogglePreference}
           />
         )}
 
@@ -553,6 +727,21 @@ function MainScreen({ user }) {
         error={passwordError}
         loading={passwordLoading}
         onSubmit={handleChangePassword}
+      />
+
+      <SwapDialog
+        swap={openSwap?.swap}
+        item={openSwap?.item}
+        onClose={() => setOpenSwap(null)}
+        onSwap={handleSwap}
+        onKeep={handleKeep}
+      />
+
+      <NotificationsDialog
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        notifications={notifications}
+        onOpenNotification={openNotification}
       />
 
       <ConfirmDialog

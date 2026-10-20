@@ -12,6 +12,10 @@ export default defineConfig({
         'apple-touch-icon.png',
         'xepa_mark.png'
       ],
+      workbox: {
+        // Push and notification-click handlers (web push via FCM).
+        importScripts: ['push-sw.js']
+      },
       manifest: {
         name: 'Xepa - Lista de Compras',
         short_name: 'Xepa',
