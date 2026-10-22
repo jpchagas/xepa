@@ -56,7 +56,7 @@ import {
   calculateSavings,
   calculateTotalPrice,
   getLatestFileDate,
-  getProductName,
+  getProductLabel,
   normalizeText,
   sortItemsByName
 } from '../utils/shoppingHelpers'
@@ -244,10 +244,13 @@ function MainScreen({ user }) {
     [products]
   )
 
+  // Recipes name generic ingredients, so branded products are left out.
   const productsByName = useMemo(
     () =>
       new Map(
-        products.map(product => [normalizeText(product.name), product])
+        products
+          .filter(product => !product.brand)
+          .map(product => [normalizeText(product.name), product])
       ),
     [products]
   )
@@ -297,7 +300,7 @@ function MainScreen({ user }) {
   const priceDate = getLatestFileDate(items, productsById)
 
   const getItemName = item =>
-    getProductName(productsById.get(item.productId), item.productId)
+    getProductLabel(productsById.get(item.productId), item.productId)
 
 
   /** Helpers */

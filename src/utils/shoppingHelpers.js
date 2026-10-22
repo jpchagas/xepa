@@ -50,6 +50,32 @@ export const getProductName = (
   String(productId ?? '').replace(/_/g, ' ')
 
 
+// Name plus brand ("Sabão em pó Ypê") for messages and search.
+// Only user-created products have a brand; CEASA ones never do.
+export const getProductLabel = (
+  product,
+  productId
+) =>
+  [getProductName(product, productId), product?.brand]
+    .filter(Boolean)
+    .join(' ')
+
+
+// Each brand is its own product (its own price), so a product is
+// identified by name + brand. A missing brand only matches a
+// product without one.
+export const findProductByName = (
+  products,
+  name,
+  brand = null
+) =>
+  products.find(
+    product =>
+      normalizeText(product.name) === normalizeText(name) &&
+      normalizeText(product.brand) === normalizeText(brand)
+  )
+
+
 // CEASA units come uppercase ("KG", "UND", "MOL"...).
 const UNIT_LABELS = {
   KG: 'kg',

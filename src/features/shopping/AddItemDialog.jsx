@@ -41,6 +41,7 @@ import {
   formatDecimal,
   getDisplayUnit,
   getItemAmount,
+  getProductLabel,
   normalizeText
 } from '../../utils/shoppingHelpers'
 
@@ -101,13 +102,17 @@ function AddItemDialog({
     () =>
       products
         .filter(product => product.name)
-        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, 'pt-BR') ||
+          (a.brand ?? '').localeCompare(b.brand ?? '', 'pt-BR')
+        ),
     [products]
   )
 
   const query = normalizeText(search)
 
-  // Names starting with the query first, then the rest.
+  // Names starting with the query first, then the rest. The brand is
+  // part of the searched text: "sabão ypê" and "ypê" both find it.
   const results = useMemo(() => {
     if (!query) return sortedProducts
 
@@ -115,17 +120,19 @@ function AddItemDialog({
     const contains = []
 
     sortedProducts.forEach(product => {
-      const name = normalizeText(product.name)
+      const label = normalizeText(getProductLabel(product))
 
-      if (name.startsWith(query)) startsWith.push(product)
-      else if (name.includes(query)) contains.push(product)
+      if (label.startsWith(query)) startsWith.push(product)
+      else if (label.includes(query)) contains.push(product)
     })
 
     return [...startsWith, ...contains]
   }, [query, sortedProducts])
 
+  // "sabão" only matches a brandless Sabão, so a new one can still be
+  // created when the name exists under other brands.
   const exactMatch = results.find(
-    product => normalizeText(product.name) === query
+    product => normalizeText(getProductLabel(product)) === query
   )
 
   const canCreate = !!query && !exactMatch
@@ -150,7 +157,7 @@ function AddItemDialog({
   }
 
   const addProduct = product =>
-    add({ type: 'existing', product }, product.id, product.name)
+    add({ type: 'existing', product }, product.id, getProductLabel(product))
 
   const addNewProduct = () => {
     const name = search.trim()
@@ -212,7 +219,9 @@ function AddItemDialog({
               component="span"
               sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}
             >
-              {formatUnit(product.unit)}
+              {[product.brand, formatUnit(product.unit)]
+                .filter(Boolean)
+                .join(' · ')}
               {showSeason && seasonalIds.has(product.id) && (
                 <SeasonBadge season={season} />
               )}
@@ -378,7 +387,7 @@ function AddItemDialog({
 
               <ListItemText
                 primary={<>Criar “<b>{search.trim()}</b>”</>}
-                secondary="Novo produto, sem preço do CEASA"
+                secondary="Novo produto · informe marca e preço na lista"
               />
             </ListItemButton>
           )}

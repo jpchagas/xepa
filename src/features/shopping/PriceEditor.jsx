@@ -19,10 +19,12 @@ const UNITS = ['kg', 'un', 'L']
 
 
 // Price entry for items without a CEASA price.
-// The unit is only asked when the product doesn't have one yet.
-function PriceEditor({ needsUnit, onSave }) {
+// The unit is only asked when the product doesn't have one yet; the
+// brand (optional) only for user-created products without one.
+function PriceEditor({ needsUnit, askBrand, onSave }) {
   const [price, setPrice] = useState('')
   const [unit, setUnit] = useState('')
+  const [brand, setBrand] = useState('')
 
   const parsedPrice = parseDecimal(price)
 
@@ -36,18 +38,39 @@ function PriceEditor({ needsUnit, onSave }) {
 
     onSave(
       Math.round(parsedPrice * 100) / 100,
-      needsUnit ? unit : null
+      needsUnit ? unit : null,
+      (askBrand && brand.trim()) || null
     )
   }
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1.5 }}>
+      {askBrand && (
+        <TextField
+          label="Marca (opcional)"
+          placeholder="Ex.: Ypê"
+          size="small"
+          fullWidth
+          autoFocus
+          value={brand}
+          onChange={event => setBrand(event.target.value)}
+          slotProps={{
+            htmlInput: {
+              maxLength: 40,
+              autoCapitalize: 'words',
+              enterKeyHint: 'next'
+            }
+          }}
+          sx={{ mb: 1 }}
+        />
+      )}
+
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
         <TextField
           label="Preço"
           placeholder="0,00"
           size="small"
-          autoFocus
+          autoFocus={!askBrand}
           value={price}
           onChange={event => setPrice(event.target.value)}
           slotProps={{
@@ -96,7 +119,9 @@ function PriceEditor({ needsUnit, onSave }) {
         color="text.secondary"
         sx={{ display: 'block', mt: 0.75 }}
       >
-        O preço fica disponível para todos que usam este produto.
+        {askBrand
+          ? 'Marcas diferentes têm preços diferentes. O preço fica disponível para todos que usam este produto.'
+          : 'O preço fica disponível para todos que usam este produto.'}
       </Typography>
     </Box>
   )

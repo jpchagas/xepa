@@ -41,6 +41,7 @@ import {
   getProductName,
   isStalePrice
 } from '../../utils/shoppingHelpers'
+import { isCeasaProduct } from '../../utils/recipeHelpers'
 
 
 // Swipe further than this (px) to delete.
@@ -81,8 +82,8 @@ function ShoppingListItem({
     ? `${formatCurrency(unitPrice)}${displayUnit ? `/${displayUnit}` : ''}`
     : 'Sem preço do CEASA'
 
-  const handleSavePrice = (price, newUnit) => {
-    onSavePrice(item, price, newUnit)
+  const handleSavePrice = (price, newUnit, brand) => {
+    onSavePrice(item, price, newUnit, brand)
     setEditingPrice(false)
   }
 
@@ -189,6 +190,15 @@ function ShoppingListItem({
                   }}
                 >
                   {name}
+
+                  {product?.brand && (
+                    <Box
+                      component="span"
+                      sx={{ color: 'text.secondary', fontWeight: 500 }}
+                    >
+                      {' · '}{product.brand}
+                    </Box>
+                  )}
                 </Typography>
 
                 {hasPrice && (
@@ -303,6 +313,7 @@ function ShoppingListItem({
               >
                 <PriceEditor
                   needsUnit={!unit}
+                  askBrand={!isCeasaProduct(product) && !product?.brand}
                   onSave={handleSavePrice}
                 />
               </Collapse>

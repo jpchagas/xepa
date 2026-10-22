@@ -23,6 +23,7 @@ import { db } from '../services/firebase'
 
 // Utils
 import {
+  findProductByName,
   getItemAmount,
   normalizeText
 } from '../utils/shoppingHelpers'
@@ -149,11 +150,9 @@ function useShoppingItems(listId, products, { onError, userId } = {}) {
 
       if (!name) return null
 
-      const existingProduct = products.find(
-        product =>
-          normalizeText(product.name) ===
-          normalizeText(name)
-      )
+      // A new product has no brand yet (it's set in the price
+      // editor), so only a brandless product with this name is reused.
+      const existingProduct = findProductByName(products, name)
 
       if (existingProduct) {
         productId = existingProduct.id
@@ -214,8 +213,25 @@ function useShoppingItems(listId, products, { onError, userId } = {}) {
   // Manual price for products CEASA doesn't quote. Stored as the
   // product's live price (every list sees it), in its history, and on
   // the item itself as a fallback.
-  const setItemPrice = (item, price, unit) => {
+  // `brand` (optional) names the product's brand. When that name +
+  // brand already exists, the item moves to it so each brand keeps a
+  // single price; otherwise the brand is set on the product.
+  const setItemPrice = (item, price, unit, brand) => {
     if (!listId || !item?.productId) return
+
+    const product = products.find(
+      candidate => candidate.id === item.productId
+    )
+
+    const target = brand && product
+      ? findProductByName(products, product.name, brand)
+      : null
+
+    const productId = target?.id ?? item.productId
+
+    const previous = target
+      ? target.latestPrice
+      : item.price && { average: item.price, fileDate: item.fileDate }
 
     const date = today()
 
@@ -229,12 +245,13 @@ function useShoppingItems(listId, products, { onError, userId } = {}) {
     const batch = writeBatch(db)
 
     batch.set(
-      doc(db, 'products', item.productId),
+      doc(db, 'products', productId),
       {
-        ...(unit && { unit }),
+        ...(unit && !target?.unit && { unit }),
+        ...(brand && !target && { brand }),
         latestPrice: { ...quote, source: 'manual' },
-        previousPrice: item.price
-          ? { average: item.price, fileDate: item.fileDate ?? null }
+        previousPrice: previous?.average
+          ? { average: previous.average, fileDate: previous.fileDate ?? null }
           : null,
         priceUpdatedAt: serverTimestamp()
       },
@@ -242,7 +259,7 @@ function useShoppingItems(listId, products, { onError, userId } = {}) {
     )
 
     batch.set(
-      doc(db, 'prices', item.productId, 'history', date),
+      doc(db, 'prices', productId, 'history', date),
       {
         ...quote,
         source: 'manual',
@@ -250,11 +267,30 @@ function useShoppingItems(listId, products, { onError, userId } = {}) {
       }
     )
 
-    batch.update(itemRef(item.id), {
+    const prices = {
       price,
-      previousPrice: item.price || null,
+      previousPrice: previous?.average ?? null,
       fileDate: date
-    })
+    }
+
+    const existingItem = target && items.find(
+      candidate => candidate.productId === target.id
+    )
+
+    if (existingItem) {
+      // That brand is already on the list: merge into it.
+      batch.update(itemRef(existingItem.id), {
+        ...prices,
+        amount:
+          Math.round(
+            (getItemAmount(existingItem) + getItemAmount(item)) * 1000
+          ) / 1000
+      })
+
+      batch.delete(itemRef(item.id))
+    } else {
+      batch.update(itemRef(item.id), { ...prices, productId })
+    }
 
     track(batch.commit())
   }
@@ -286,6 +322,7 @@ function useShoppingItems(listId, products, { onError, userId } = {}) {
         : products.find(
             candidate =>
               !candidate.category &&
+              !candidate.brand &&
               normalizeText(candidate.name) === normalizeText(entry.name)
           )
 

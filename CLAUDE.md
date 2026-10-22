@@ -41,7 +41,7 @@ Strict split: **components render UI, hooks own state and Firestore logic**.
 ### Firestore data model
 
 - `users` — user docs (created on register; looked up by email when sharing).
-- `products` — catalog: `name`, `unit` (CEASA codes: KG, UND, DZ, MOL, BDJ, CX…; `getDisplayUnit` maps them to labels), `category`, and the live price summary `latestPrice` {average, min, max, fileDate} / `previousPrice` {average, fileDate}. Users can create products manually.
+- `products` — catalog: `name`, `unit` (CEASA codes: KG, UND, DZ, MOL, BDJ, CX…; `getDisplayUnit` maps them to labels), `category`, and the live price summary `latestPrice` {average, min, max, fileDate} / `previousPrice` {average, fileDate}. Users can create products manually; those (never CEASA ones) can have an optional `brand`, set in the item's "Informar preço" editor. Each brand is its own product with its own price, so products are identified by name + brand (`findProductByName`; no brand matches only brandless products). Saving a brand that already exists for that name moves the item to that product. Search matches the brand; recipes only match brandless products.
 - `prices/{productId}/history/{fileDate}` — one doc per quote day (`average`/`min`/`max`, `source: 'ceasa' | 'manual'`).
 - `ceasaImports/{fileDate}` — server-only marker that a CEASA quote was imported (idempotency).
 - `users/{uid}/notifications/{id}` — written only by Cloud Functions; the app reads them and sets `read`. Ids: `items-{listId}-{actorUid}` (grouped while unread, 30 min window) and `prices-{listId}-{fileDate}`.

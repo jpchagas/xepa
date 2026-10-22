@@ -32,7 +32,11 @@ export async function handleItemAdded({ db, messaging, logger, listId, item }) {
   ])
 
   const actorName = getActorName(actorSnap.get('email'))
-  const itemName = productSnap.get('name') ?? item.productId
+  // "Sabão em pó Ypê": user-created products may have a brand.
+  const itemName = [
+    productSnap.get('name') ?? item.productId,
+    productSnap.get('brand')
+  ].filter(Boolean).join(' ')
 
   let notified = 0
 
